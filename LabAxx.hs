@@ -6,7 +6,7 @@ import Control.Parallel
 import Control.Parallel.Strategies as S
 import Control.Monad.Par
 import Test.QuickCheck.Modifiers
-
+import Control.DeepSeq
 --import Data.List.Utils
 
 
@@ -57,25 +57,27 @@ main = do
          ]
 
 -- 1a
-pmap :: (a -> b) -> [a] -> [b]
+
+
+pmap :: (NFData b) => (a -> b) -> [a] -> [b]
 pmap _ []     = []
 pmap f (x:xs) = fx `par` (fxs `pseq` (fx : fxs))
   where
-    fx = f x
+    fx = force $ f x
     fxs = pmap f xs
 
-pjackknife :: ([a] -> b) -> [a] -> [b]
+pjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
 pjackknife f = pmap f . resamples 500
 
 -- 1b
-rmap :: (a -> b) -> [a] -> [b]
+rmap :: (NFData b) => (a -> b) -> [a] -> [b]
 rmap _ []     = []
 rmap f (x:xs) = runEval $ do
-    fx  <- rpar (f x)
+    fx  <- rpar (force $ f x)
     fxs <- rseq (rmap f xs)
     return (fx:fxs)
 
-rjackknife :: ([a] -> b) -> [a] -> [b]
+rjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
 rjackknife f = rmap f . resamples 500
 {-
 sjackknife :: ([a] -> b) -> [a] -> [b]
@@ -89,7 +91,7 @@ sjackknife f xs = S.parMap rpar f $ resamples 500 xs
 -}
 
 sjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
-sjackknife f xs = using list (parListChunk 100 rdeepseq)
+sjackknife f xs = using list (parListChunk 150 rdeepseq)
     where list = jackknife f xs
 
 mjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
