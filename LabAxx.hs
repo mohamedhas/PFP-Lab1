@@ -39,6 +39,8 @@ crud = zipWith (\x a -> sin (x / 300)**2 + a)  [0..]
 main = do
   let (xs,ys) = splitAt 1500  (take 6000
                                (randoms (mkStdGen 211570155)) :: [Float] )
+
+  let unsortedList = take 22000 (randoms (mkStdGen 211570155)) :: [Float]
   -- handy (later) to give same input different parallel functions
 
   let rs = crud xs ++ ys
@@ -48,18 +50,20 @@ main = do
   putStrLn $ "jack mean min:  " ++ show (minimum j)
   putStrLn $ "jack mean max:  " ++ show (maximum j)
   defaultMain
+
         [
-           bench "mergeSort"      (nf (mergeSort ) ys),
-           bench "mMergeSort"     (nf (mMergeSort) ys),
-           bench "pMergeSort"     (nf (pMergeSort) ys)
+           bench "mergeSort"      (nf (mergeSort ) unsortedList),
+           bench "mMergeSort"     (nf (mMergeSort) unsortedList),
+           bench "pMergeSort"     (nf (pMergeSort) unsortedList)
          ]
 {-
         [
-           bench "jackknife"      (nf (jackknife       mean) rs),
-           bench "pjackknife"     (nf (pjackknife      mean) rs),
-           bench "rjackknife"     (nf (rjackknife      mean) rs),
-           bench "sjackknife"     (nf (sjackknife  mean) rs),
-           bench "mjackknife"     (nf (mjackknife  mean) rs)
+           bench "jackknife"       (nf (jackknife       mean) rs),
+           bench "pjackknife"      (nf (pjackknife      mean) rs),
+           bench "parMapjackknife" (nf (parMapjackknife      mean) rs),
+           bench "rjackknife"      (nf (rjackknife      mean) rs),
+           bench "sjackknife"      (nf (sjackknife  mean) rs),
+           bench "mjackknife"      (nf (mjackknife  mean) rs)
          ]
 -}
 -- 1a
@@ -75,6 +79,10 @@ pmap size f xs = fx `par` (fxs `pseq` (fx ++ fxs))
 
 pjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
 pjackknife f xs' = (pmap 100 f (take 1500 xs)) ++ (jackknife f $ drop 1500 xs')
+                      where xs = resamples 500 xs'
+
+parMapjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
+parMapjackknife f xs' = (S.parMap rdeepseq f (take 1500 xs)) ++ (jackknife f $ drop 1500 xs')
                       where xs = resamples 500 xs'
 
 -- 1b
@@ -111,7 +119,8 @@ mMergeSort :: (Ord a, NFData a) => [a] -> [a]
 mMergeSort xs = case Main.split xs of
         ([], [])       -> []
         (x:[], [])     -> [x]
-        (sp1, sp2) -> runPar $ do
+        (sp1, sp2) -> if ((length sp1) < 500) then merge (mergeSort sp1) (mergeSort sp2)
+                                              else runPar $ do
               i <- new
               j <- new
               fork (put i (mMergeSort sp1))
@@ -124,6 +133,9 @@ pMergeSort :: (Ord a, NFData a) => [a] -> [a]
 pMergeSort xs = case Main.split xs of
         ([], [])       -> []
         (x:[], [])     -> [x]
-        (sp1, sp2) -> par rs1 $ par rs2 $ pseq rs1 $ pseq rs2 merge rs1 rs2
-                      where rs1 = pMergeSort sp1
-                            rs2 = pMergeSort sp2
+        (sp1, sp2) -> if ((length sp1) < 1000) then merge (mergeSort sp1) (mergeSort sp1)
+                              else par rs1 $ pseq rs2 $ merge rs1 rs2
+                      where rs1 = force $ pMergeSort sp1
+                            rs2 = force $ pMergeSort sp2
+                            f1 = par rs2 f2
+                            f2 = pseq rs1 $ pseq rs2 merge rs1 rs2
