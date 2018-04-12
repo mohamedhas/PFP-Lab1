@@ -79,16 +79,7 @@ rmap f (x:xs) = runEval $ do
 
 rjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
 rjackknife f = rmap f . resamples 500
-{-
-sjackknife :: ([a] -> b) -> [a] -> [b]
-sjackknife f xs = ((parList $ r0 f) `dot` (r0 $ resamples 500 )) xs
--}
 
-
-{-
-sjackknife :: ([a] -> b) -> [a] -> [b]
-sjackknife f xs = S.parMap rpar f $ resamples 500 xs
--}
 
 sjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
 sjackknife f xs = using list (parListChunk 150 rdeepseq)
