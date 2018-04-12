@@ -50,24 +50,25 @@ main = do
   defaultMain
         [
            bench "jackknife"      (nf (jackknife       mean) rs),
-           --bench "pjackknife"     (nf (pjackknife      mean) rs),
+           bench "pjackknife"     (nf (pjackknife      mean) rs)
            --bench "rjackknife"     (nf (rjackknife      mean) rs),
-           bench "sjackknife"     (nf (sjackknife  mean) rs)--,
+           --bench "sjackknife"     (nf (sjackknife  mean) rs)--,
            --bench "mjackknife"     (nf (mjackknife  mean) rs)
          ]
 
 -- 1a
 
 
-pmap :: (NFData b) => (a -> b) -> [a] -> [b]
-pmap _ []     = []
-pmap f (x:xs) = fx `par` (fxs `pseq` (fx : fxs))
+pmap :: (NFData b) => Int -> (a -> b) -> [a] -> [b]
+pmap th f [] = []
+pmap th f xs = fx `par` (fxs `pseq` (fx ++ fxs))
   where
-    fx = force $ f x
-    fxs = pmap f xs
+    chunck = take th xs
+    fx = map (force . f) chunck
+    fxs = pmap th f (drop th xs)
 
 pjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
-pjackknife f = pmap f . resamples 500
+pjackknife f = pmap 50 f . resamples 500
 
 -- 1b
 rmap :: (NFData b) => (a -> b) -> [a] -> [b]
