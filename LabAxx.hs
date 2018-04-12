@@ -82,7 +82,8 @@ pjackknife f xs' = (pmap 100 f (take 1500 xs)) ++ (jackknife f $ drop 1500 xs')
                       where xs = resamples 500 xs'
 
 parMapjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
-parMapjackknife f xs' = (S.parMap rdeepseq f (take 1500 xs)) ++ (jackknife f $ drop 1500 xs')
+parMapjackknife f xs' = (S.parMap rdeepseq f (take 1500 xs)) ++
+                                                  (jackknife f $ drop 1500 xs')
                       where xs = resamples 500 xs'
 
 -- 1b
@@ -119,7 +120,8 @@ mMergeSort :: (Ord a, NFData a) => [a] -> [a]
 mMergeSort xs = case Main.split xs of
         ([], [])       -> []
         (x:[], [])     -> [x]
-        (sp1, sp2) -> if ((length sp1) < 500) then merge (mergeSort sp1) (mergeSort sp2)
+        (sp1, sp2) -> if ((length sp1) < 500) then
+                                          merge (mergeSort sp1) (mergeSort sp2)
                                               else runPar $ do
               i <- new
               j <- new
@@ -133,7 +135,8 @@ pMergeSort :: (Ord a, NFData a) => [a] -> [a]
 pMergeSort xs = case Main.split xs of
         ([], [])       -> []
         (x:[], [])     -> [x]
-        (sp1, sp2) -> if ((length sp1) < 1000) then merge (mergeSort sp1) (mergeSort sp1)
+        (sp1, sp2) -> if ((length sp1) < 1000) then
+                                   merge (mergeSort sp1) (mergeSort sp1)
                               else par rs1 $ pseq rs2 $ merge rs1 rs2
                       where rs1 = force $ pMergeSort sp1
                             rs2 = force $ pMergeSort sp2
