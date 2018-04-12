@@ -49,13 +49,19 @@ main = do
   putStrLn $ "jack mean max:  " ++ show (maximum j)
   defaultMain
         [
+           bench "mergeSort"      (nf (mergeSort ) ys),
+           bench "mMergeSort"     (nf (mMergeSort) ys),
+           bench "pMergeSort"     (nf (pMergeSort) ys)
+         ]
+{-
+        [
            bench "jackknife"      (nf (jackknife       mean) rs),
            bench "pjackknife"     (nf (pjackknife      mean) rs),
            bench "rjackknife"     (nf (rjackknife      mean) rs),
            bench "sjackknife"     (nf (sjackknife  mean) rs),
            bench "mjackknife"     (nf (mjackknife  mean) rs)
          ]
-
+-}
 -- 1a
 pmap_ :: (NFData b) => (a -> b) -> [a] -> [b]
 pmap_ f xs = (pmap 60 f (take 1500 xs)) -- ++  --(pmap 500 f $ drop 1500 xs)
@@ -93,23 +99,31 @@ mjackknife f xs = runPar $ parMapM (return . f) $ resamples 500 xs
 split :: (NFData a) => [a] -> ([a], [a])
 split myList = splitAt (((length myList) + 1) `div` 2) myList
 
+
+
 mergeSort :: (Ord a, NFData a) => [a] -> [a]
 mergeSort xs = case Main.split xs of
+        ([], [])       -> []
+        (x:[], [])     -> [x]
+        (sp1, sp2) -> merge (mergeSort sp1) (mergeSort sp2)
+
+mMergeSort :: (Ord a, NFData a) => [a] -> [a]
+mMergeSort xs = case Main.split xs of
         ([], [])       -> []
         (x:[], [])     -> [x]
         (sp1, sp2) -> runPar $ do
               i <- new
               j <- new
-              fork (put i (mergeSort sp1))
-              fork (put j (mergeSort sp2))
+              fork (put i (mMergeSort sp1))
+              fork (put j (mMergeSort sp2))
               rs1 <- get i
               rs2 <- get j
               return $ merge rs1 rs2
 
-mergeSort2 :: (Ord a, NFData a) => [a] -> [a]
-mergeSort2 xs = case Main.split xs of
+pMergeSort :: (Ord a, NFData a) => [a] -> [a]
+pMergeSort xs = case Main.split xs of
         ([], [])       -> []
         (x:[], [])     -> [x]
         (sp1, sp2) -> par rs1 $ par rs2 $ pseq rs1 $ pseq rs2 merge rs1 rs2
-                      where rs1 = mergeSort2 sp1
-                            rs2 = mergeSort2 sp2
+                      where rs1 = pMergeSort sp1
+                            rs2 = pMergeSort sp2
