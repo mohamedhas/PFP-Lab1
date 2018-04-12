@@ -50,10 +50,10 @@ main = do
   defaultMain
         [
            bench "jackknife"      (nf (jackknife       mean) rs),
-           bench "pjackknife"     (nf (pjackknife      mean) rs)
-           --bench "rjackknife"     (nf (rjackknife      mean) rs),
-           --bench "sjackknife"     (nf (sjackknife  mean) rs)--,
-           --bench "mjackknife"     (nf (mjackknife  mean) rs)
+           bench "pjackknife"     (nf (pjackknife      mean) rs),
+           bench "rjackknife"     (nf (rjackknife      mean) rs),
+           bench "sjackknife"     (nf (sjackknife  mean) rs),
+           bench "mjackknife"     (nf (mjackknife  mean) rs)
          ]
 
 -- 1a
@@ -72,15 +72,15 @@ pjackknife f xs' = (pmap 100 f (take 1500 xs)) ++ (jackknife f $ drop 1500 xs')
                       where xs = resamples 500 xs'
 
 -- 1b
-rmap :: (NFData b) => (a -> b) -> [a] -> [b]
-rmap _ []     = []
-rmap f (x:xs) = runEval $ do
-    fx  <- rpar (force $ f x)
-    fxs <- rseq (rmap f xs)
-    return (fx:fxs)
+rmap :: (NFData b) => Int -> (a -> b) -> [a] -> [b]
+rmap size _ []     = []
+rmap size f (x:xs) = if (size < 2500) then map f xs else runEval $ do
+        fx  <- rpar (force $ f x)
+        fxs <- rseq (rmap (size - 1) f xs)
+        return (fx:fxs)
 
 rjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
-rjackknife f = rmap f . resamples 500
+rjackknife f = rmap 6000 f . resamples 500
 
 
 sjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
