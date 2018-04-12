@@ -1,0 +1,28 @@
+LAB A - Paralell Programming in Haskell
+
+Course: DAT280 - Paralell Functional Programming 2018
+Authors: Mohamed Hassainia & Miki Swahn
+_____________________________________________________________________________
+
+Assignment 1
+
+We paralellized the jackknife function in four different ways, whih in each
+case resulted in improved mean runtime. The benchmark time for the given
+version of jackknife took 515.4 ms which can be put in contrast to the
+paralellized versions as described below.
+
+a) Paralellizing using par and pseq, resulted in the time 312.1 ms.
+
+b) Paralellizing using rpar and rseq, got the time 394.s ms. This is better
+   compared to parMap, because the first quarter of the list is pricier than
+   the latter. 
+
+c) Paralellizing using Strategies led to the time 380.8 ms.
+
+d) Paralellizing using Par Monad resulted in the time 352.3.
+
+The number of sparks was 56938 where 3 were garbage colledted and 115
+fizzled. 
+
+
+Assignment 2
