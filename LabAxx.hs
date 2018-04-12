@@ -137,5 +137,3 @@ pMergeSort xs = case Main.split xs of
                               else par rs1 $ pseq rs2 $ merge rs1 rs2
                       where rs1 = force $ pMergeSort sp1
                             rs2 = force $ pMergeSort sp2
-                            f1 = par rs2 f2
-                            f2 = pseq rs1 $ pseq rs2 merge rs1 rs2
