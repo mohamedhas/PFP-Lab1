@@ -65,10 +65,11 @@ pmap th f [] = []
 pmap size f xs = fx `par` (fxs `pseq` (fx ++ fxs))
   where
     fx     = force $ map f (take size xs)
-    fxs    = pmap th f (drop size xs)
+    fxs    = pmap size f (drop size xs)
 
 pjackknife :: (NFData b) => ([a] -> b) -> [a] -> [b]
-pjackknife f xs = (pmap 60 f (take 1500 xs)) ++ (jackknife f $ drop 1500 xs)
+pjackknife f xs' = (pmap 100 f (take 1500 xs)) ++ (jackknife f $ drop 1500 xs')
+                      where xs = resamples 500 xs'
 
 -- 1b
 rmap :: (NFData b) => (a -> b) -> [a] -> [b]
