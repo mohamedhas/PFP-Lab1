@@ -4,25 +4,34 @@ Course: DAT280 - Paralell Functional Programming 2018
 Authors: Mohamed Hassainia & Miki Swahn
 _____________________________________________________________________________
 
-Assignment 1
+-- Assignment 1 --
 
 We paralellized the jackknife function in four different ways, whih in each
 case resulted in improved mean runtime. The benchmark time for the given
 version of jackknife took 515.4 ms which can be put in contrast to the
 paralellized versions as described below.
 
-a) Paralellizing using par and pseq, resulted in the time 312.1 ms.
+a) Paralellizing using par and pseq resulted in the time 312.1 ms. The
+   improvement had to take into account that the firs quareter of the rs list
+   is pricy to compute, wheras the remining three quarters are simple.
 
-b) Paralellizing using rpar and rseq, got the time 394.s ms. This is better
-   compared to parMap, because the first quarter of the list is pricier than
-   the latter. 
+b) Paralellizing using rpar and rseq took 394.s ms. This is roughly the same
+   compared to parMap, because parMap is implemented using rpar and rseq.
+   This paralellzation was also dependent on the prerequisite that the first quarter of the list is complex as opposed to the rest.
 
-c) Paralellizing using Strategies led to the time 380.8 ms.
+c) Paralellizing using Strategies led to the time 380.8 ms. This version
+   utilized the original jackknife function, but when it's run with Strategy
+   the list get divided into chunks that are run in paralell.
 
-d) Paralellizing using Par Monad resulted in the time 352.3.
+d) Paralellizing using Par Monad resulted in the time 352.3 ms. Impementing
+   this was straightforward because of the intuitive interface. 
 
-The number of sparks was 56938 where 3 were garbage colledted and 115
-fizzled. 
+The number of sparks was 56938 where only 3 were garbage colledted. 
 
 
-Assignment 2
+-- Assignment 2 --
+
+We paralellized mergesort in two ways, by using the Par Monad and by using
+par & pseq. The time when utilizing the Par Monad was sligtly better: 13.45
+ms versus 14.11 ms. These runtimes are siggnificantly better than the
+procedual mergesort which took 24.67 ms. 
