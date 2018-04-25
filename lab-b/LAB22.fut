@@ -44,3 +44,16 @@ let main () =
 	in (x, y, z) 
 	
 	
+-- (v1, f1) OP' (v2, f2) = (if f2 then v2 else v1 OP v2, f1 OR f2)
+-- 
+-- (0,false) is left neutral because of the following reduction: 
+-- 
+-- (0, false) OP' (v2, f2) = (if f2 then v2 else 0 OP v2, false OR f2) =
+-- 
+-- = (0, false) OP' (v2, f2) = (if f2 then v2 else v2, f2) =
+-- 
+-- = (0, false) OP' (v2, f2) = (v2, f2)
+-- 
+-- Since 0 is neutral for OP, 0 OP v2 evaluates to v2
+-- Since false is neutral to OR, false OR f2 evaluates to f2
+-- Since both clauses in the conditional evaluated to v2 it can be reduced to v2
