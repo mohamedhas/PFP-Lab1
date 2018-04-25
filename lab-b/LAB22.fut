@@ -31,8 +31,12 @@ let process_idx (n: i32) (xs: [n]i32, ys: [n]i32) : (i32, (i32, i32)) =
 	in if ( n == 0 ) then (0, (0, 0)) 
 		else if ( abs(maxXS - minYS) < abs(maxYS - minXS) ) then (abs(maxYS - minXS), (imaxYS, iminXS)) else (abs(maxXS - minYS), (iminYS, imaxXS))
 
-let segscan [n] ’t (op: t -> t -> t) (ne: t) (arr: [n](t, bool)): [n]t =
-	
+
+let segscan [n] 't (op: t -> t -> t) (ne: t) (arr: [n](t, bool)): [n]t =
+	let f (b2':bool) (t1' :t) (t2' :t) = if b2' then t2' else (op t1' t2')	
+	let op' (t1 :t, b1:bool) (t2:t, b2:bool) = if ((t1 == ne) && (false == b1)) then (t2, b2) 
+		else (f b2 t1 t2, (b1 || b2) ) 	
+	in scan (ne, false) op' arr
 
 
 
