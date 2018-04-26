@@ -34,18 +34,23 @@ let process_idx (n: i32) (xs: [n]i32, ys: [n]i32) : (i32, (i32, i32)) =
 
 let segscan [n] 't (op: t -> t -> t) (ne: t) (arr: [n](t, bool)): [n]t =
 	let f (b2':bool) (t1' :t) (t2' :t) = if b2' then t2' else (op t1' t2')	
-	let op' (t1 :t, b1:bool) (t2:t, b2:bool) = if ((t1 == ne) && (false == b1)) then (t2, b2) 
-		else (f b2 t1 t2, (b1 || b2) ) 	
-	in scan (ne, false) op' arr
+	let op' (t1 :t, b1:bool) (t2:t, b2:bool) = (f b2 t1 t2, (b1 || b2) ) 	
+	let (vs, _) = unzip (scan op' (ne, false) arr)
+	in vs
+
+let estimate_pi [n] (size: f32) (xs: [n]f32) (ys: [n]f32) = 
+	let succ_hits:f32  = reduce (+) 0.0f32 (map ( \((x:f32), (y:f32)) -> if (((x - 1.0f32)*(x - 1.0f32)) + 
+		    ((y - 1.0f32)*(y - 1.0f32)) <= 1.0f32) then 1.0f32 else 0.0f32) (zip xs ys)) 
+	in (4.0f32 * succ_hits) / size
 
 
 
 let s1 : [14]i32 = [23,45,-23,44,23,54,23,12,34,54,7,2, 4,67]
 let s2 : [14]i32 = [-2, 3, 4,57,34, 2, 5,56,56, 3,3,5,77,89]
+let s3 = [(1,true), (2,false), (3,false), (4,true), (5,false), (6,true)]
 
-let main () = 
-	let (x, (y, z)) = process_idx 14 (s1, s2)
-	in (x, y, z) 
+let main [n] (xs:[n]f32, ys:[n]f32) = 
+	estimate_pi 1000000.0f32 xs ys 
 	
 	
 -- (v1, f1) OP' (v2, f2) = (if f2 then v2 else v1 OP v2, f1 OR f2)
