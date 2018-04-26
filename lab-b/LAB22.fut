@@ -44,6 +44,16 @@ let estimate_pi [n] (size: f32) (xs: [n]f32) (ys: [n]f32) =
 	in (4.0f32 * succ_hits) / size
 
 
+let integrate [n] (size: f32) (xs:[n]f32) (ys:[n]f32) =
+	let f (x:f32) (y:f32): f32 =
+		2.0 f32*x*x*x*x*x*x*y*y - x*x*x*x*x*x*y
+		+ 3.0f32*x*x*x*y*y*y - x*x*y*y*y +
+		x*x*x*y - 3.0f32*x*y*y + x*y -
+		5.0 f32*y + 2.0 f32*x*x*x*x*x*y*y*y*y -
+		2.0 f32*x*x*x*x*x*y*y*y*y*y + 250.0 f32
+	let sum = reduce + 0 (map f (zip xs ys))
+	in (4/n)*sum
+
 
 let s1 : [14]i32 = [23,45,-23,44,23,54,23,12,34,54,7,2, 4,67]
 let s2 : [14]i32 = [-2, 3, 4,57,34, 2, 5,56,56, 3,3,5,77,89]
@@ -51,8 +61,11 @@ let s3 = [(1,true), (2,false), (3,false), (4,true), (5,false), (6,true)]
 
 let main [n] (xs:[n]f32, ys:[n]f32) = 
 	estimate_pi 10000.0f32 xs ys 
+
+
 	
-	
+-- Answer to 1.3
+--	
 -- (v1, f1) OP' (v2, f2) = (if f2 then v2 else v1 OP v2, f1 OR f2)
 -- 
 -- (0,false) is left neutral because of the following reduction: 
