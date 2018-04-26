@@ -1,3 +1,8 @@
+import "/futlib/math"
+import "/futlib/sobol"
+import "/futlib/sobol-dir-50"
+module array = import "/futlib/array"
+
 
 let abs (x: i32) = if (0 > x) then -x else x
 
@@ -45,22 +50,35 @@ let estimate_pi [n] (size: f32) (xs: [n]f32) (ys: [n]f32) =
 
 
 let integrate [n] (size: f32) (xs:[n]f32) (ys:[n]f32) =
-	let f (x:f32) (y:f32): f32 =
-		2.0 f32*x*x*x*x*x*x*y*y - x*x*x*x*x*x*y
+	let f (x:f32, y:f32): f32 =
+		2.0f32*x*x*x*x*x*x*y*y - x*x*x*x*x*x*y
 		+ 3.0f32*x*x*x*y*y*y - x*x*y*y*y +
 		x*x*x*y - 3.0f32*x*y*y + x*y -
-		5.0 f32*y + 2.0 f32*x*x*x*x*x*y*y*y*y -
-		2.0 f32*x*x*x*x*x*y*y*y*y*y + 250.0 f32
-	let sum = reduce + 0 (map f (zip xs ys))
-	in (4/n)*sum
+		5.0f32*y + 2.0f32*x*x*x*x*x*y*y*y*y -
+		2.0f32*x*x*x*x*x*y*y*y*y*y + 250.0f32
+	let sum = reduce (+) 0.0f32 (map f (zip xs ys))
+	in (4.0f32/size)*sum
+
+module S2 = Sobol sobol_dir { let D = 2 }
+module R = S2.Reduce { type t = f32
+                       let ne = 0f32
+                       let op (x:f32) (y:f32) = x f32.+ y
+                       let f (v : [2]f64) : f32 =
+                         let x:f64 = v[0]
+                         let y:f64 = v[1]
+                         in f32.bool(x*x+y*y < 1.0f64) }
+
 
 
 let s1 : [14]i32 = [23,45,-23,44,23,54,23,12,34,54,7,2, 4,67]
 let s2 : [14]i32 = [-2, 3, 4,57,34, 2, 5,56,56, 3,3,5,77,89]
 let s3 = [(1,true), (2,false), (3,false), (4,true), (5,false), (6,true)]
 
-let main [n] (xs:[n]f32, ys:[n]f32) = 
-	estimate_pi 10000.0f32 xs ys 
+let main () = 
+	let sobol = array.transpose (S2.chunk 0 1000000)
+	let xs' = map f32.f64 sobol[0]
+	let ys' = map f32.f64 sobol[1]
+	in integrate 1000000.0f32 xs' ys' 
 
 
 	
