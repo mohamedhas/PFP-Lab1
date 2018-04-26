@@ -50,7 +50,7 @@ let s2 : [14]i32 = [-2, 3, 4,57,34, 2, 5,56,56, 3,3,5,77,89]
 let s3 = [(1,true), (2,false), (3,false), (4,true), (5,false), (6,true)]
 
 let main [n] (xs:[n]f32, ys:[n]f32) = 
-	estimate_pi 1000000.0f32 xs ys 
+	estimate_pi 10000.0f32 xs ys 
 	
 	
 -- (v1, f1) OP' (v2, f2) = (if f2 then v2 else v1 OP v2, f1 OR f2)
