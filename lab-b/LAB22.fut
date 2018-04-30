@@ -1,6 +1,8 @@
 import "/futlib/math"
 import "/futlib/sobol"
 import "/futlib/sobol-dir-50"
+import "/futlib/random"
+import "/futlib/math"
 module array = import "/futlib/array"
 
 
@@ -74,12 +76,26 @@ let s1 : [14]i32 = [23,45,-23,44,23,54,23,12,34,54,7,2, 4,67]
 let s2 : [14]i32 = [-2, 3, 4,57,34, 2, 5,56,56, 3,3,5,77,89]
 let s3 = [(1,true), (2,false), (3,false), (4,true), (5,false), (6,true)]
 
-let main () = 
+let sbool_gen () = 
 	let sobol = array.transpose (S2.chunk 0 1000000)
 	let xs' = map f32.f64 sobol[0]
 	let ys' = map f32.f64 sobol[1]
 	in integrate 1000000.0f32 xs' ys' 
 
+type spin = i8
+module dist = uniform_int_distribution i8 minstd_rand
+
+
+entry random_grid (seed: i32) (w: i32) (h: i32) =
+		let rng = minstd_rand.rng_from_seed [seed]
+		let fx = dist.rand (1i8,6i8)
+		let (rng1, x) = fx rng	
+		in reduce (\ (x, y) z -> fx x) (rng1,x) (i32.iota h)	
+
+let main () = 
+	2i32
+
+	
 
 	
 -- Answer to 1.3
