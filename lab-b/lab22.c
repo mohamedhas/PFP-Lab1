@@ -19,19 +19,40 @@ int futhark_context_sync(struct futhark_context *ctx);
  * Arrays
 */
 
+struct futhark_i32_1d ;
+struct futhark_i8_1d ;
+struct futhark_i32_1d *futhark_new_i32_1d(struct futhark_context *ctx,
+                                          int32_t *data, int dim0);
+int futhark_free_i32_1d(struct futhark_context *ctx,
+                        struct futhark_i32_1d *arr);
+int futhark_values_i32_1d(struct futhark_context *ctx,
+                          struct futhark_i32_1d *arr, int32_t *data);
+int64_t *futhark_shape_i32_1d(struct futhark_context *ctx,
+                              struct futhark_i32_1d *arr);
+struct futhark_i8_1d *futhark_new_i8_1d(struct futhark_context *ctx,
+                                        int8_t *data, int dim0);
+int futhark_free_i8_1d(struct futhark_context *ctx, struct futhark_i8_1d *arr);
+int futhark_values_i8_1d(struct futhark_context *ctx, struct futhark_i8_1d *arr,
+                         int8_t *data);
+int64_t *futhark_shape_i8_1d(struct futhark_context *ctx,
+                             struct futhark_i8_1d *arr);
 
 /*
  * Opaque values
 */
 
+struct futhark_opaque_z37U938627432493791713 ;
+int futhark_free_opaque_z37U938627432493791713(struct futhark_context *ctx,
+                                               struct futhark_opaque_z37U938627432493791713 *obj);
 
 /*
  * Entry points
 */
 
 int futhark_main(struct futhark_context *ctx, int32_t *out0);
-int futhark_random_grid(struct futhark_context *ctx, int8_t *out0, int32_t in0,
-                        int32_t in1, int32_t in2);
+int futhark_random_grid(struct futhark_context *ctx,
+                        struct futhark_opaque_z37U938627432493791713 **out0,
+                        int32_t in0, int32_t in1, int32_t in2);
 
 /*
  * Miscellaneous
@@ -978,13 +999,13 @@ static void futrts_cli_entry_main(struct futhark_context *ctx)
 {
     int64_t t_start, t_end;
     int time_runs;
-    int32_t result_7666;
+    int32_t result_8863;
     
     if (perform_warmup) {
         time_runs = 0;
         assert(futhark_context_sync(ctx) == 0);
         t_start = get_wall_time();
-        assert(futhark_main(ctx, &result_7666) == 0);
+        assert(futhark_main(ctx, &result_8863) == 0);
         assert(futhark_context_sync(ctx) == 0);
         t_end = get_wall_time();
         
@@ -999,7 +1020,7 @@ static void futrts_cli_entry_main(struct futhark_context *ctx)
     for (int run = 0; run < num_runs; run++) {
         assert(futhark_context_sync(ctx) == 0);
         t_start = get_wall_time();
-        assert(futhark_main(ctx, &result_7666) == 0);
+        assert(futhark_main(ctx, &result_8863) == 0);
         assert(futhark_context_sync(ctx) == 0);
         t_end = get_wall_time();
         
@@ -1011,7 +1032,7 @@ static void futrts_cli_entry_main(struct futhark_context *ctx)
             ;
         }
     }
-    write_scalar(stdout, binary_output, &i32, &result_7666);
+    write_scalar(stdout, binary_output, &i32, &result_8863);
     printf("\n");
     ;
 }
@@ -1019,25 +1040,25 @@ static void futrts_cli_entry_random_grid(struct futhark_context *ctx)
 {
     int64_t t_start, t_end;
     int time_runs;
-    int32_t read_value_7668;
+    int32_t read_value_8865;
     
-    if (read_scalar(&i32, &read_value_7668) != 0)
+    if (read_scalar(&i32, &read_value_8865) != 0)
         panic(1, "Error when reading input #%d of type %s (errno: %s).\n", 0,
               i32.type_name, strerror(errno));
     
-    int32_t read_value_7669;
+    int32_t read_value_8866;
     
-    if (read_scalar(&i32, &read_value_7669) != 0)
+    if (read_scalar(&i32, &read_value_8866) != 0)
         panic(1, "Error when reading input #%d of type %s (errno: %s).\n", 1,
               i32.type_name, strerror(errno));
     
-    int32_t read_value_7670;
+    int32_t read_value_8867;
     
-    if (read_scalar(&i32, &read_value_7670) != 0)
+    if (read_scalar(&i32, &read_value_8867) != 0)
         panic(1, "Error when reading input #%d of type %s (errno: %s).\n", 2,
               i32.type_name, strerror(errno));
     
-    int8_t result_7671;
+    struct futhark_opaque_z37U938627432493791713 *result_8868;
     
     if (perform_warmup) {
         time_runs = 0;
@@ -1046,8 +1067,8 @@ static void futrts_cli_entry_random_grid(struct futhark_context *ctx)
         ;
         assert(futhark_context_sync(ctx) == 0);
         t_start = get_wall_time();
-        assert(futhark_random_grid(ctx, &result_7671, read_value_7668,
-                                   read_value_7669, read_value_7670) == 0);
+        assert(futhark_random_grid(ctx, &result_8868, read_value_8865,
+                                   read_value_8866, read_value_8867) == 0);
         assert(futhark_context_sync(ctx) == 0);
         t_end = get_wall_time();
         
@@ -1058,7 +1079,8 @@ static void futrts_cli_entry_random_grid(struct futhark_context *ctx)
         ;
         ;
         ;
-        ;
+        assert(futhark_free_opaque_z37U938627432493791713(ctx, result_8868) ==
+            0);
     }
     time_runs = 1;
     /* Proper run. */
@@ -1068,8 +1090,8 @@ static void futrts_cli_entry_random_grid(struct futhark_context *ctx)
         ;
         assert(futhark_context_sync(ctx) == 0);
         t_start = get_wall_time();
-        assert(futhark_random_grid(ctx, &result_7671, read_value_7668,
-                                   read_value_7669, read_value_7670) == 0);
+        assert(futhark_random_grid(ctx, &result_8868, read_value_8865,
+                                   read_value_8866, read_value_8867) == 0);
         assert(futhark_context_sync(ctx) == 0);
         t_end = get_wall_time();
         
@@ -1081,15 +1103,17 @@ static void futrts_cli_entry_random_grid(struct futhark_context *ctx)
         ;
         ;
         if (run < num_runs - 1) {
-            ;
+            assert(futhark_free_opaque_z37U938627432493791713(ctx,
+                                                              result_8868) ==
+                0);
         }
     }
     ;
     ;
     ;
-    write_scalar(stdout, binary_output, &i8, &result_7671);
+    printf("#<opaque %s>", "[](u32, i8)");
     printf("\n");
-    ;
+    assert(futhark_free_opaque_z37U938627432493791713(ctx, result_8868) == 0);
 }
 typedef void entry_point_fun(struct futhark_context *);
 struct entry_point_entry {
@@ -1273,16 +1297,20 @@ void futhark_debugging_report(struct futhark_context *ctx)
     }
     if (ctx->debugging) { }
 }
-struct futrts_int8_t {
-    int8_t v0;
+struct futrts_int64_t_mem_int32_t_int64_t_mem {
+    int64_t v0;
+    struct memblock v1;
+    int32_t v2;
+    int64_t v3;
+    struct memblock v4;
 } ;
 struct futrts_int32_t {
     int32_t v0;
 } ;
 static struct futrts_int32_t futrts_main(struct futhark_context *ctx);
-static struct futrts_int8_t futrts_random_grid(struct futhark_context *ctx,
-                                               int32_t seed_7635,
-                                               int32_t w_7636, int32_t h_7637);
+static struct futrts_int64_t_mem_int32_t_int64_t_mem
+futrts_random_grid(struct futhark_context *ctx, int32_t seed_8765,
+                   int32_t w_8766, int32_t h_8767);
 static inline int8_t add8(int8_t x, int8_t y)
 {
     return x + y;
@@ -2193,92 +2221,283 @@ static inline double futrts_from_bits64(int64_t x)
 }
 static struct futrts_int32_t futrts_main(struct futhark_context *ctx)
 {
-    int32_t scalar_out_7658;
+    int32_t scalar_out_8846;
     
-    scalar_out_7658 = 2;
+    scalar_out_8846 = 2;
     
-    struct futrts_int32_t retval_7663;
+    struct futrts_int32_t retval_8860;
     
-    retval_7663.v0 = scalar_out_7658;
-    return retval_7663;
+    retval_8860.v0 = scalar_out_8846;
+    return retval_8860;
 }
-static struct futrts_int8_t futrts_random_grid(struct futhark_context *ctx,
-                                               int32_t seed_7635,
-                                               int32_t w_7636, int32_t h_7637)
+static
+struct futrts_int64_t_mem_int32_t_int64_t_mem futrts_random_grid(struct futhark_context *ctx,
+                                                                 int32_t seed_8765,
+                                                                 int32_t w_8766,
+                                                                 int32_t h_8767)
 {
-    int8_t scalar_out_7659;
-    int32_t arg_7638 = seed_7635 ^ 5461;
-    int32_t arg_7639 = 1 ^ arg_7638;
-    int32_t arg_7640 = 48271 * arg_7639;
-    int32_t arg_7641 = umod32(arg_7640, 2147483647);
-    int32_t res_7642 = 48271 * arg_7641;
-    int32_t res_7643 = umod32(res_7642, 2147483647);
-    char res_7644 = ule32(2147483646, res_7643);
-    char res_7645;
-    int32_t res_7646;
-    int32_t res_7647;
-    char loop_while_7648;
-    int32_t rng_7649;
-    int32_t x_7650;
+    int64_t out_memsizze_8848;
+    struct memblock out_mem_8847;
     
-    loop_while_7648 = res_7644;
-    rng_7649 = res_7643;
-    x_7650 = res_7643;
-    while (loop_while_7648) {
-        int32_t res_7651 = 48271 * rng_7649;
-        int32_t res_7652 = umod32(res_7651, 2147483647);
-        char res_7653 = ule32(2147483646, res_7652);
-        char loop_while_tmp_7660 = res_7653;
-        int32_t rng_tmp_7661 = res_7652;
-        int32_t x_tmp_7662;
+    out_mem_8847.references = NULL;
+    
+    int32_t out_arrsizze_8849;
+    int64_t out_memsizze_8851;
+    struct memblock out_mem_8850;
+    
+    out_mem_8850.references = NULL;
+    
+    int32_t arg_8768 = seed_8765 ^ 5461;
+    int32_t arg_8769 = 1 ^ arg_8768;
+    int32_t arg_8770 = 48271 * arg_8769;
+    int32_t arg_8771 = umod32(arg_8770, 2147483647);
+    int32_t res_8772 = 48271 * arg_8771;
+    int32_t res_8773 = umod32(res_8772, 2147483647);
+    char res_8774 = ule32(2147483646, res_8773);
+    char res_8775;
+    int32_t res_8776;
+    char loop_while_8778;
+    int32_t rng_8779;
+    
+    loop_while_8778 = res_8774;
+    rng_8779 = res_8773;
+    while (loop_while_8778) {
+        int32_t res_8781 = 48271 * rng_8779;
+        int32_t res_8782 = umod32(res_8781, 2147483647);
+        char res_8783 = ule32(2147483646, res_8782);
+        char loop_while_tmp_8852 = res_8783;
+        int32_t rng_tmp_8853;
         
-        x_tmp_7662 = res_7652;
-        loop_while_7648 = loop_while_tmp_7660;
-        rng_7649 = rng_tmp_7661;
-        x_7650 = x_tmp_7662;
+        rng_tmp_8853 = res_8782;
+        loop_while_8778 = loop_while_tmp_8852;
+        rng_8779 = rng_tmp_8853;
     }
-    res_7645 = loop_while_7648;
-    res_7646 = rng_7649;
-    res_7647 = x_7650;
+    res_8775 = loop_while_8778;
+    res_8776 = rng_8779;
     
-    int32_t res_7654 = udiv32(res_7647, 357913941);
-    int32_t res_7655 = 1 + res_7654;
-    int64_t res_7656 = zext_i32_i64(res_7655);
-    int8_t res_7657 = sext_i64_i8(res_7656);
+    int32_t arg_8788 = w_8766 * h_8767;
+    int64_t binop_x_8834 = sext_i32_i64(arg_8788);
+    int64_t bytes_8833 = binop_x_8834 * 4;
+    struct memblock mem_8835;
     
-    scalar_out_7659 = res_7657;
+    mem_8835.references = NULL;
+    memblock_alloc(ctx, &mem_8835, bytes_8833, "mem_8835");
     
-    struct futrts_int8_t retval_7664;
+    struct memblock mem_8837;
     
-    retval_7664.v0 = scalar_out_7659;
-    return retval_7664;
+    mem_8837.references = NULL;
+    memblock_alloc(ctx, &mem_8837, binop_x_8834, "mem_8837");
+    
+    int32_t discard_8831;
+    int32_t acc_8821 = res_8776;
+    
+    for (int32_t i_8820 = 0; i_8820 < arg_8788; i_8820++) {
+        int32_t res_8800 = 48271 * acc_8821;
+        int32_t res_8801 = umod32(res_8800, 2147483647);
+        char res_8802 = ule32(2147483646, res_8801);
+        char res_8803;
+        int32_t res_8804;
+        int32_t res_8805;
+        char loop_while_8806;
+        int32_t rng_8807;
+        int32_t x_8808;
+        
+        loop_while_8806 = res_8802;
+        rng_8807 = res_8801;
+        x_8808 = res_8801;
+        while (loop_while_8806) {
+            int32_t res_8809 = 48271 * rng_8807;
+            int32_t res_8810 = umod32(res_8809, 2147483647);
+            char res_8811 = ule32(2147483646, res_8810);
+            char loop_while_tmp_8857 = res_8811;
+            int32_t rng_tmp_8858 = res_8810;
+            int32_t x_tmp_8859;
+            
+            x_tmp_8859 = res_8810;
+            loop_while_8806 = loop_while_tmp_8857;
+            rng_8807 = rng_tmp_8858;
+            x_8808 = x_tmp_8859;
+        }
+        res_8803 = loop_while_8806;
+        res_8804 = rng_8807;
+        res_8805 = x_8808;
+        
+        int32_t res_8812 = udiv32(res_8805, 357913941);
+        int32_t res_8813 = 1 + res_8812;
+        int64_t res_8814 = zext_i32_i64(res_8813);
+        int8_t res_8815 = sext_i64_i8(res_8814);
+        
+        *(int32_t *) &mem_8835.mem[i_8820 * 4] = res_8804;
+        *(int8_t *) &mem_8837.mem[i_8820] = res_8815;
+        
+        int32_t row_8829 = *(int32_t *) &mem_8835.mem[i_8820 * 4];
+        int32_t acc_tmp_8854 = row_8829;
+        
+        acc_8821 = acc_tmp_8854;
+    }
+    discard_8831 = acc_8821;
+    
+    char assert_arg_8816 = arg_8788 == h_8767;
+    char shape_ok_8817;
+    
+    if (!assert_arg_8816) {
+        fprintf(stderr, "Assertion failed at %s: %s\n",
+                "LAB22.fut:89:1-93:94 -> LAB22.fut:93:20-93:94",
+                "new shape has different number of elements than old shape");
+        exit(1);
+    }
+    out_arrsizze_8849 = h_8767;
+    out_memsizze_8848 = bytes_8833;
+    memblock_set(ctx, &out_mem_8847, &mem_8835, "mem_8835");
+    out_memsizze_8851 = binop_x_8834;
+    memblock_set(ctx, &out_mem_8850, &mem_8837, "mem_8837");
+    
+    struct futrts_int64_t_mem_int32_t_int64_t_mem retval_8861;
+    
+    retval_8861.v0 = out_memsizze_8848;
+    retval_8861.v1.references = NULL;
+    memblock_set(ctx, &retval_8861.v1, &out_mem_8847, "out_mem_8847");
+    retval_8861.v2 = out_arrsizze_8849;
+    retval_8861.v3 = out_memsizze_8851;
+    retval_8861.v4.references = NULL;
+    memblock_set(ctx, &retval_8861.v4, &out_mem_8850, "out_mem_8850");
+    memblock_unref(ctx, &out_mem_8847, "out_mem_8847");
+    memblock_unref(ctx, &out_mem_8850, "out_mem_8850");
+    memblock_unref(ctx, &mem_8835, "mem_8835");
+    memblock_unref(ctx, &mem_8837, "mem_8837");
+    return retval_8861;
+}
+struct futhark_i8_1d {
+    struct memblock mem;
+    int64_t shape[1];
+} ;
+struct futhark_i8_1d *futhark_new_i8_1d(struct futhark_context *ctx,
+                                        int8_t *data, int dim0)
+{
+    struct futhark_i8_1d *arr = malloc(sizeof(struct futhark_i8_1d));
+    
+    if (arr == NULL)
+        return NULL;
+    arr->mem.references = NULL;
+    memblock_alloc(ctx, &arr->mem, dim0 * sizeof(int8_t), "arr->mem");
+    memmove(arr->mem.mem + 0, data + 0, dim0 * sizeof(int8_t));
+    arr->shape[0] = dim0;
+    return arr;
+}
+int futhark_free_i8_1d(struct futhark_context *ctx, struct futhark_i8_1d *arr)
+{
+    memblock_unref(ctx, &arr->mem, "arr->mem");
+    free(arr);
+    return 0;
+}
+int futhark_values_i8_1d(struct futhark_context *ctx, struct futhark_i8_1d *arr,
+                         int8_t *data)
+{
+    memmove(data + 0, arr->mem.mem + 0, arr->shape[0] * sizeof(int8_t));
+    return 0;
+}
+int64_t *futhark_shape_i8_1d(struct futhark_context *ctx,
+                             struct futhark_i8_1d *arr)
+{
+    return arr->shape;
+}
+struct futhark_i32_1d {
+    struct memblock mem;
+    int64_t shape[1];
+} ;
+struct futhark_i32_1d *futhark_new_i32_1d(struct futhark_context *ctx,
+                                          int32_t *data, int dim0)
+{
+    struct futhark_i32_1d *arr = malloc(sizeof(struct futhark_i32_1d));
+    
+    if (arr == NULL)
+        return NULL;
+    arr->mem.references = NULL;
+    memblock_alloc(ctx, &arr->mem, dim0 * sizeof(int32_t), "arr->mem");
+    memmove(arr->mem.mem + 0, data + 0, dim0 * sizeof(int32_t));
+    arr->shape[0] = dim0;
+    return arr;
+}
+int futhark_free_i32_1d(struct futhark_context *ctx, struct futhark_i32_1d *arr)
+{
+    memblock_unref(ctx, &arr->mem, "arr->mem");
+    free(arr);
+    return 0;
+}
+int futhark_values_i32_1d(struct futhark_context *ctx,
+                          struct futhark_i32_1d *arr, int32_t *data)
+{
+    memmove(data + 0, arr->mem.mem + 0, arr->shape[0] * sizeof(int32_t));
+    return 0;
+}
+int64_t *futhark_shape_i32_1d(struct futhark_context *ctx,
+                              struct futhark_i32_1d *arr)
+{
+    return arr->shape;
+}
+struct futhark_opaque_z37U938627432493791713 {
+    struct futhark_i32_1d *v0;
+    struct futhark_i8_1d *v1;
+} ;
+int futhark_free_opaque_z37U938627432493791713(struct futhark_context *ctx,
+                                               struct futhark_opaque_z37U938627432493791713 *obj)
+{
+    int ret = 0, tmp;
+    
+    if ((tmp = futhark_free_i32_1d(ctx, obj->v0)) != 0)
+        ret = tmp;
+    if ((tmp = futhark_free_i8_1d(ctx, obj->v1)) != 0)
+        ret = tmp;
+    free(obj);
+    return ret;
 }
 int futhark_main(struct futhark_context *ctx, int32_t *out0)
 {
-    int32_t scalar_out_7658;
-    struct futrts_int32_t ret_7665;
+    int32_t scalar_out_8846;
+    struct futrts_int32_t ret_8862;
     
-    ret_7665 = futrts_main(ctx);
-    scalar_out_7658 = ret_7665.v0;
-    *out0 = scalar_out_7658;
+    ret_8862 = futrts_main(ctx);
+    scalar_out_8846 = ret_8862.v0;
+    *out0 = scalar_out_8846;
     return 0;
 }
-int futhark_random_grid(struct futhark_context *ctx, int8_t *out0, int32_t in0,
-                        int32_t in1, int32_t in2)
+int futhark_random_grid(struct futhark_context *ctx,
+                        struct futhark_opaque_z37U938627432493791713 **out0,
+                        int32_t in0, int32_t in1, int32_t in2)
 {
-    int32_t seed_7635;
-    int32_t w_7636;
-    int32_t h_7637;
-    int8_t scalar_out_7659;
+    int32_t seed_8765;
+    int32_t w_8766;
+    int32_t h_8767;
+    int64_t out_memsizze_8848;
+    struct memblock out_mem_8847;
     
-    seed_7635 = in0;
-    w_7636 = in1;
-    h_7637 = in2;
+    out_mem_8847.references = NULL;
     
-    struct futrts_int8_t ret_7667;
+    int32_t out_arrsizze_8849;
+    int64_t out_memsizze_8851;
+    struct memblock out_mem_8850;
     
-    ret_7667 = futrts_random_grid(ctx, seed_7635, w_7636, h_7637);
-    scalar_out_7659 = ret_7667.v0;
-    *out0 = scalar_out_7659;
+    out_mem_8850.references = NULL;
+    seed_8765 = in0;
+    w_8766 = in1;
+    h_8767 = in2;
+    
+    struct futrts_int64_t_mem_int32_t_int64_t_mem ret_8864;
+    
+    ret_8864 = futrts_random_grid(ctx, seed_8765, w_8766, h_8767);
+    out_memsizze_8848 = ret_8864.v0;
+    out_mem_8847 = ret_8864.v1;
+    out_arrsizze_8849 = ret_8864.v2;
+    out_memsizze_8851 = ret_8864.v3;
+    out_mem_8850 = ret_8864.v4;
+    assert((*out0 =
+            malloc(sizeof(struct futhark_opaque_z37U938627432493791713))) !=
+        NULL);
+    assert(((*out0)->v0 = malloc(sizeof(struct futhark_i32_1d))) != NULL);
+    (*out0)->v0->mem = out_mem_8847;
+    (*out0)->v0->shape[0] = out_arrsizze_8849;
+    assert(((*out0)->v1 = malloc(sizeof(struct futhark_i8_1d))) != NULL);
+    (*out0)->v1->mem = out_mem_8850;
+    (*out0)->v1->shape[0] = out_arrsizze_8849;
     return 0;
 }

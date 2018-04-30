@@ -86,11 +86,11 @@ type spin = i8
 module dist = uniform_int_distribution i8 minstd_rand
 
 
-entry random_grid (seed: i32) (w: i32) (h: i32) =
+entry random_grid (seed: i32) (w: i32) (h: i32) : ([w][h]rng_engine.rng , [w][h]spin) =
 		let rng = minstd_rand.rng_from_seed [seed]
-		let fx = dist.rand (1i8,6i8)
+		let fx = dist.rand (0i8,1i8)
 		let (rng1, x) = fx rng	
-		in reduce (\ (x, y) z -> fx x) (rng1,x) (i32.iota h)	
+		in unzip (reshape (h, w) (scan (\ (x, _) _ -> fx x) (rng1,x) (replicate (w * h) (rng1,x))))
 
 let main () = 
 	2i32
