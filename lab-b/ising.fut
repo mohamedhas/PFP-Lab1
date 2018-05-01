@@ -23,29 +23,33 @@ module rand_i8 = uniform_int_distribution i8 rng_engine
 --
 -- Remember to consult https://futhark-lang.org/docs/futlib/random.html
 
-let rand = rand_f32.rand (0f32, 1f32)
+--let rand = rand_f32.rand (0f32, 1f32)
 
 -- Create a new grid of a given size.  Also produce an identically
 -- sized array of RNG states.
 entry random_grid (seed: i32) (w: i32) (h: i32)
                 : ([w][h]rng_engine.rng, [w][h]spin) =
-  ...
+			let rng = minstd_rand.rng_from_seed [seed]
+			let fx = rand_i8.rand (0i8,1i8)
+			let (rng1, x) = fx rng	
+			in unzip (reshape (h, w) (scan (\ (x, _) _ -> fx x) (rng1,x) (replicate (w * h) (rng1,x))))
+  
 
 -- Compute $\Delta_e$ for each spin in the grid, using wraparound at
 -- the edges.
-entry deltas [w][h] (spins: [w][h]spin): [w][h]i8 =
-  ...
+-- entry deltas [w][h] (spins: [w][h]spin): [w][h]i8 =
+--  ...
 
 -- The sum of all deltas of a grid.  The result is a measure of how
 -- ordered the grid is.
-entry delta_sum [w][h] (spins: [w][h]spin): i32 =
-   deltas spins |> flatten |> map1 i32.i8 |> reduce (+) 0
+--entry delta_sum [w][h] (spins: [w][h]spin): i32 =
+--   deltas spins |> flatten |> map1 i32.i8 |> reduce (+) 0
 
 -- Take one step in the Ising 2D simulation.
-entry step [w][h] (abs_temp: f32) (samplerate: f32)
-                  (rngs: [w][h]rng_engine.rng) (spins: [w][h]spin)
-                : ([w][h]rng_engine.rng, [w][h]spin) =
-  ...
+--entry step [w][h] (abs_temp: f32) (samplerate: f32)
+--                  (rngs: [w][h]rng_engine.rng) (spins: [w][h]spin)
+--                : ([w][h]rng_engine.rng, [w][h]spin) =
+--  ...
 
 import "/futlib/colour"
 
@@ -58,7 +62,7 @@ entry render [w][h] (spins: [w][h]spin): [w][h]argb.colour =
   in map1 (map1 pixel) spins
 
 -- | Just for benchmarking.
-let main (abs_temp: f32) (samplerate: f32)
-         (w: i32) (h: i32) (n: i32): [w][h]spin =
-  (loop (rngs, spins) = random_grid 1337 w h for _i < n do
-     step abs_temp samplerate rngs spins).2
+--let main (abs_temp: f32) (samplerate: f32)
+--         (w: i32) (h: i32) (n: i32): [w][h]spin =
+--  (loop (rngs, spins) = random_grid 1337 w h for _i < n do
+--     step abs_temp samplerate rngs spins).2
