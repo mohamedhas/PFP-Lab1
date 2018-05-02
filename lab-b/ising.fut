@@ -50,11 +50,10 @@ entry deltas [w][h] (spins: [w][h]spin): [w][h]i8 =
 entry step [w][h] (abs_temp: f32) (samplerate: f32)
                   (rngs: [w][h]rng_engine.rng) (spins: [w][h]spin)
                 : ([w][h]rng_engine.rng, [w][h]spin) =
-   let b = 
-   let p = 
-   let t =
-   let Delta_e =
-   in c' = if (b > p && (Delta_e < (- Delta_e) || b < exp( (- Delta_e) / t ) )) then -c else c
+   let p = samplerate 
+   let t = abs_temp
+   let c' (rng, b) Delta_e = if (b > p && (Delta_e < (- Delta_e) || b < exp( (- Delta_e) / t ) )) then (rng2, -c) else (rng2, c)
+   in map3 c' () (deltas spins)
 
 
 import "/futlib/colour"
