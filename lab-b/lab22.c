@@ -29,7 +29,7 @@ int futhark_context_sync(struct futhark_context *ctx);
  * Entry points
 */
 
-int futhark_main(struct futhark_context *ctx, int32_t *out0);
+int futhark_main(struct futhark_context *ctx, int8_t *out0);
 
 /*
  * Miscellaneous
@@ -976,13 +976,13 @@ static void futrts_cli_entry_main(struct futhark_context *ctx)
 {
     int64_t t_start, t_end;
     int time_runs;
-    int32_t result_6647;
+    int8_t result_6691;
     
     if (perform_warmup) {
         time_runs = 0;
         assert(futhark_context_sync(ctx) == 0);
         t_start = get_wall_time();
-        assert(futhark_main(ctx, &result_6647) == 0);
+        assert(futhark_main(ctx, &result_6691) == 0);
         assert(futhark_context_sync(ctx) == 0);
         t_end = get_wall_time();
         
@@ -997,7 +997,7 @@ static void futrts_cli_entry_main(struct futhark_context *ctx)
     for (int run = 0; run < num_runs; run++) {
         assert(futhark_context_sync(ctx) == 0);
         t_start = get_wall_time();
-        assert(futhark_main(ctx, &result_6647) == 0);
+        assert(futhark_main(ctx, &result_6691) == 0);
         assert(futhark_context_sync(ctx) == 0);
         t_end = get_wall_time();
         
@@ -1009,7 +1009,7 @@ static void futrts_cli_entry_main(struct futhark_context *ctx)
             ;
         }
     }
-    write_scalar(stdout, binary_output, &i32, &result_6647);
+    write_scalar(stdout, binary_output, &i8, &result_6691);
     printf("\n");
     ;
 }
@@ -1192,10 +1192,10 @@ void futhark_debugging_report(struct futhark_context *ctx)
     }
     if (ctx->debugging) { }
 }
-struct futrts_int32_t {
-    int32_t v0;
+struct futrts_int8_t {
+    int8_t v0;
 } ;
-static struct futrts_int32_t futrts_main(struct futhark_context *ctx);
+static struct futrts_int8_t futrts_main(struct futhark_context *ctx);
 static inline int8_t add8(int8_t x, int8_t y)
 {
     return x + y;
@@ -2104,24 +2104,24 @@ static inline double futrts_from_bits64(int64_t x)
     p.f = x;
     return p.t;
 }
-static struct futrts_int32_t futrts_main(struct futhark_context *ctx)
+static struct futrts_int8_t futrts_main(struct futhark_context *ctx)
 {
-    int32_t scalar_out_6644;
+    int8_t scalar_out_6688;
     
-    scalar_out_6644 = 2;
+    scalar_out_6688 = 2;
     
-    struct futrts_int32_t retval_6645;
+    struct futrts_int8_t retval_6689;
     
-    retval_6645.v0 = scalar_out_6644;
-    return retval_6645;
+    retval_6689.v0 = scalar_out_6688;
+    return retval_6689;
 }
-int futhark_main(struct futhark_context *ctx, int32_t *out0)
+int futhark_main(struct futhark_context *ctx, int8_t *out0)
 {
-    int32_t scalar_out_6644;
-    struct futrts_int32_t ret_6646;
+    int8_t scalar_out_6688;
+    struct futrts_int8_t ret_6690;
     
-    ret_6646 = futrts_main(ctx);
-    scalar_out_6644 = ret_6646.v0;
-    *out0 = scalar_out_6644;
+    ret_6690 = futrts_main(ctx);
+    scalar_out_6688 = ret_6690.v0;
+    *out0 = scalar_out_6688;
     return 0;
 }

@@ -109,9 +109,24 @@ let deltas [w][h] (spins:[w][h]spin) : [w][h]i8 =
 
 -- (x: [][]rng_engine.rng, y: [][]spin) 
 
+let step [w][h] (abs_temp: f32) (samplerate: f32)
+                  (rngs: [w][h]rng_engine.rng) (spins: [w][h]spin)
+                : ([w][h]rng_engine.rng, [w][h]spin) =
+   let rshp 't (x: [][]t) = (reshape (h * w, 1) x)[0]
+   let p = samplerate 
+   let t = abs_temp
+   let deltasF32 = map (\x -> f32.i8 x) (rshp (deltas spins))
+   let randomGen : (rng_engine.rng -> (rng_engine.rng, i8)) = (rand_i8.rand (0i8,1i8))
+   let bs :[](rng_engine.rng, i8) = map (\x -> randomGen x ) (rshp rngs) 
+   let getC' c (rng2: rng_engine.rng, b:i8) Delta_e = if ((f32.i8 b) > p && (Delta_e < (- Delta_e) || (f32.i8 b) < f32.exp( (- Delta_e) / t ) )) then (rng2, -1i8 * c) else (rng2, c)
+   in unzip (reshape (h, w) (map3 getC' (rshp spins) (bs) deltasF32))
+		
+
+
 let main () = 
 	--random_grid 123i32 10i32 20i32	
-	deltas [[1i8,-1i8], [1i8,1i8]]
+	--deltas [[1i8,-1i8], [1i8,1i8]]
+	2i8
 -- 
 	
 -- Answer to 1.3
