@@ -32,13 +32,14 @@ entry random_grid (seed: i32) (w: i32) (h: i32)
 			let rng = minstd_rand.rng_from_seed [seed]
 			let fx = rand_i8.rand (0i8,1i8)
 			let (rng1, x) = fx rng	
-			in unzip (reshape (h, w) (scan (\ (x, _) _ -> fx x) (rng1,x) (replicate (w * h) (rng1,x))))
+			let (a,b) = unzip (scan (\ (x, _) _ -> fx x) (rng1,x) (replicate (w * h) (rng1,x) ) )
+			in (a, reshape (h, w) b )
   
 
 -- Compute $\Delta_e$ for each spin in the grid, using wraparound at
 -- the edges.
--- entry deltas [w][h] (spins: [w][h]spin): [w][h]i8 =
---  ...
+entry deltas [w][h] (spins: [w][h]spin): [w][h]i8 =
+  let map2 () spins 
 
 -- The sum of all deltas of a grid.  The result is a measure of how
 -- ordered the grid is.
@@ -46,10 +47,15 @@ entry random_grid (seed: i32) (w: i32) (h: i32)
 --   deltas spins |> flatten |> map1 i32.i8 |> reduce (+) 0
 
 -- Take one step in the Ising 2D simulation.
---entry step [w][h] (abs_temp: f32) (samplerate: f32)
---                  (rngs: [w][h]rng_engine.rng) (spins: [w][h]spin)
---                : ([w][h]rng_engine.rng, [w][h]spin) =
---  ...
+entry step [w][h] (abs_temp: f32) (samplerate: f32)
+                  (rngs: [w][h]rng_engine.rng) (spins: [w][h]spin)
+                : ([w][h]rng_engine.rng, [w][h]spin) =
+   let b = 
+   let p = 
+   let t =
+   let Delta_e =
+   in c' = if (b > p && (Delta_e < (- Delta_e) || b < exp( (- Delta_e) / t ) )) then -c else c
+
 
 import "/futlib/colour"
 
