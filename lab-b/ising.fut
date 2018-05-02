@@ -55,12 +55,14 @@ import "/futlib/colour"
 
 -- | Turn a grid of spins into an array of pixel values, ready to be
 -- blitted to the screen.
-entry render [w][h] (spins: [w][h]spin): [w][h]argb.colour =
-  let pixel spin = if spin == -1i8
-                   then argb.(bright <| light red)
-                   else argb.(bright <| light blue)
-  in map1 (map1 pixel) spins
+--entry render [w][h] (spins: [w][h]spin): [w][h]argb.colour =
+--  let pixel spin = if spin == -1i8
+--                   then argb.(bright <| light red)
+--                   else argb.(bright <| light blue)
+--  in map1 (map1 pixel) spins
 
+let main() = 
+	2i32
 -- | Just for benchmarking.
 --let main (abs_temp: f32) (samplerate: f32)
 --         (w: i32) (h: i32) (n: i32): [w][h]spin =

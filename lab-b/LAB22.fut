@@ -85,18 +85,34 @@ let sbool_gen () =
 type spin = i8
 module dist = uniform_int_distribution i8 minstd_rand
 
+module rng_engine = minstd_rand
+module rand_f32 = uniform_real_distribution f32 rng_engine
+module rand_i8 = uniform_int_distribution i8 rng_engine
 
-entry random_grid (seed: i32) (w: i32) (h: i32) : ([w][h]rng_engine.rng , [w][h]spin) =
-		let rng = minstd_rand.rng_from_seed [seed]
-		let fx = dist.rand (0i8,1i8)
-		let (rng1, x) = fx rng	
-		in unzip (reshape (h, w) (scan (\ (x, _) _ -> fx x) (rng1,x) (replicate (w * h) (rng1,x))))
+
+let random_grid (seed: i32) (w: i32) (h: i32)
+                : ([w][h]rng_engine.rng, [w][h]spin) =
+			let rng = minstd_rand.rng_from_seed [seed]
+			let randomGen : (rng_engine.rng -> (rng_engine.rng, i8)) = (rand_i8.rand (0i8,1i8))
+			let (rng1:rng_engine.rng, x:i8) = randomGen rng	
+			let (a, b) = unzip ((scan (\ (fstEltRng:rng_engine.rng, _) _ -> randomGen fstEltRng) (rng1,x) (replicate (w * h) (rng1,x))))
+			in ((reshape (h, w) a), (reshape (h, w) b) )
+
+let deltas [w][h] (spins:[w][h]spin) : [w][h]i8 =
+	let ds = (reshape (h * w, 1) (rotate@1 (-1) spins))[0]
+	let us = (reshape (h * w, 1) (rotate@1 (1) spins))[0]
+	let ls = (reshape (h * w, 1) (rotate@0 (1) spins))[0]
+	let rs = (reshape (h * w, 1) (rotate@0 (-1) spins))[0]
+	let cs = (reshape (h * w, 1) spins)[0]
+	let delta (c:i8) (d:i8) (u:i8) (l:i8) (r:i8) = 2i8 * c * ( u + d + l + r )
+	in reshape (h, w) (map5 delta cs ds us ls rs)
+
+-- (x: [][]rng_engine.rng, y: [][]spin) 
 
 let main () = 
-	2i32
-
-	
-
+	--random_grid 123i32 10i32 20i32	
+	deltas [[1i8,-1i8], [1i8,1i8]]
+-- 
 	
 -- Answer to 1.3
 --	
