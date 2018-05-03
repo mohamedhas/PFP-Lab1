@@ -54,10 +54,9 @@ let snd (_, y) = y
 
 let segreduce [n] 't (op : t -> t -> t) (ne:t)
 	(arr : [n](t, bool)) : []t =
-		let bs = snd (unzip arr)
-		let f (_, flag) fpo = if (
-		let (values, _) = unzip (filter  (zip (zip (segscan op ne arr)) (bs) (rotate bs 1) ))
-		in values
+		let bs = rotate 1 (snd (unzip arr))
+		let (values, _) = unzip (filter (\(_, flag) -> flag) (init (zip (segscan op ne arr) bs)))
+		in values ++ [(fst (last arr))]
 
 let estimate_pi [n] (size: f32) (xs: [n]f32) (ys: [n]f32) = 
 	let succ_hits:f32  = reduce (+) 0.0f32 (map ( \((x:f32), (y:f32)) -> if (((x - 1.0f32)*(x - 1.0f32)) + 
@@ -140,8 +139,8 @@ let step [w][h] (abs_temp: f32) (samplerate: f32)
 let main () = 
 	--random_grid 123i32 10i32 20i32	
 	--deltas [[1i8,-1i8], [1i8,1i8]]
-	--segreduce (+) 0 s3
-	segscan (+) 0 s3
+	segreduce (+) 0 s3
+	--segscan (+) 0 s3
 -- 
 	
 -- Answer to 1.3
