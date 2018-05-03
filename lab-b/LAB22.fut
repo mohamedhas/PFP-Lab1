@@ -39,11 +39,25 @@ let process_idx (n: i32) (xs: [n]i32, ys: [n]i32) : (i32, (i32, i32)) =
 		else if ( abs(maxXS - minYS) < abs(maxYS - minXS) ) then (abs(maxYS - minXS), (imaxYS, iminXS)) else (abs(maxXS - minYS), (iminYS, imaxXS))
 
 
-let segscan [n] 't (op: t -> t -> t) (ne: t) (arr: [n](t, bool)): [n]t =
+let segscan' [n] 't (op: t -> t -> t) (ne: t) (arr: [n](t, bool)): [n](t,bool) =
 	let f (b2':bool) (t1' :t) (t2' :t) = if b2' then t2' else (op t1' t2')	
 	let op' (t1 :t, b1:bool) (t2:t, b2:bool) = (f b2 t1 t2, (b1 || b2) ) 	
-	let (vs, _) = unzip (scan op' (ne, false) arr)
+	in scan op' (ne, false) arr
+
+
+let segscan [n] 't (op: t -> t -> t) (ne: t) (arr: [n](t, bool)): [n]t =
+	let (vs, _) = unzip (segscan' op ne arr)
 	in vs
+
+let fst (x, _) = x 
+let snd (_, y) = y
+
+let segreduce [n] 't (op : t -> t -> t) (ne:t)
+	(arr : [n](t, bool)) : []t =
+		let bs = snd (unzip arr)
+		let f (_, flag) fpo = if (
+		let (values, _) = unzip (filter  (zip (zip (segscan op ne arr)) (bs) (rotate bs 1) ))
+		in values
 
 let estimate_pi [n] (size: f32) (xs: [n]f32) (ys: [n]f32) = 
 	let succ_hits:f32  = reduce (+) 0.0f32 (map ( \((x:f32), (y:f32)) -> if (((x - 1.0f32)*(x - 1.0f32)) + 
@@ -126,7 +140,8 @@ let step [w][h] (abs_temp: f32) (samplerate: f32)
 let main () = 
 	--random_grid 123i32 10i32 20i32	
 	--deltas [[1i8,-1i8], [1i8,1i8]]
-	2i8
+	--segreduce (+) 0 s3
+	segscan (+) 0 s3
 -- 
 	
 -- Answer to 1.3
