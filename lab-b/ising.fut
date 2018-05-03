@@ -7,9 +7,9 @@ type spin = i8
 import "/futlib/random"
 
 -- Pick an RNG engine and define random distributions for specific types.
-module rng_engine = minstd_rand
-module rand_f32 = uniform_real_distribution f32 rng_engine
-module rand_i8 = uniform_int_distribution i8 rng_engine
+--module rng_engine = minstd_rand
+--module rand_f32 = uniform_real_distribution f32 rng_engine
+--module rand_i8 = uniform_int_distribution i8 rng_engine
 
 -- We can create an few RNG state with 'rng_engine.rng_from_seed [x]',
 -- where 'x' is some seed.  We can split one RNG state into many with
@@ -27,34 +27,62 @@ module rand_i8 = uniform_int_distribution i8 rng_engine
 
 -- Create a new grid of a given size.  Also produce an identically
 -- sized array of RNG states.
+
+module dist = uniform_int_distribution i8 minstd_rand
+
+module rng_engine = minstd_rand
+module rand_f32 = uniform_real_distribution f32 rng_engine
+module rand_i8 = uniform_int_distribution i8 rng_engine
+
 entry random_grid (seed: i32) (w: i32) (h: i32)
                 : ([w][h]rng_engine.rng, [w][h]spin) =
 			let rng = minstd_rand.rng_from_seed [seed]
-			let fx = rand_i8.rand (0i8,1i8)
-			let (rng1, x) = fx rng	
-			let (a,b) = unzip (scan (\ (x, _) _ -> fx x) (rng1,x) (replicate (w * h) (rng1,x) ) )
-			in (a, reshape (h, w) b )
+			let randomGen : (rng_engine.rng -> (rng_engine.rng, i8)) = (rand_i8.rand (0i8,1i8))
+			let (rng1:rng_engine.rng, x:i8) = randomGen rng	
+			let (a, b) = unzip ((scan (\ (fstEltRng:rng_engine.rng, _) _ -> randomGen fstEltRng) (rng1,x) (replicate (w * h) (rng1,x))))
+			in ((reshape (w, h) a), (reshape (w, h) (map (\x -> if (x == 0i8) then -1i8 else x) b)) )
   
+--entry random_grid (seed: i32) (w: i32) (h: i32)
+--                : ([w][h]rng_engine.rng, [w][h]spin) = 
+--	random_grid' seed w h 
 
 -- Compute $\Delta_e$ for each spin in the grid, using wraparound at
 -- the edges.
 entry deltas [w][h] (spins: [w][h]spin): [w][h]i8 =
-  let map2 () spins 
+	let ds = (reshape (1, h * w) (rotate@1 (-1) spins))[0]
+	let us = (reshape (1, h * w) (rotate@1 (1) spins))[0]
+	let ls = (reshape (1, h * w) (rotate@0 (1) spins))[0]
+	let rs = (reshape (1, h * w) (rotate@0 (-1) spins))[0]
+	let cs = (reshape (1, h * w) spins)[0]
+	let delta (c:i8) (d:i8) (u:i8) (l:i8) (r:i8) = 2i8 * c * ( u + d + l + r )
+	in reshape (w, h) (map5 delta cs ds us ls rs)
 
 -- The sum of all deltas of a grid.  The result is a measure of how
 -- ordered the grid is.
---entry delta_sum [w][h] (spins: [w][h]spin): i32 =
---   deltas spins |> flatten |> map1 i32.i8 |> reduce (+) 0
+entry delta_sum [w][h] (spins: [w][h]spin): i32 =
+   deltas spins |> flatten |> map1 i32.i8 |> reduce (+) 0
 
 -- Take one step in the Ising 2D simulation.
+let step' [w][h] (abs_temp: f32) (samplerate: f32)
+                  (rngs: [w][h]rng_engine.rng) (spins: [w][h]spin)
+                : ([w][h]rng_engine.rng, [w][h]spin) =
+   	let rshp 't (x: [][]t) = (reshape (1, h * w) x)[0]
+   	let p = samplerate 
+   	let t = abs_temp
+   	let deltasF32 = map (\x -> f32.i8 x) (rshp (deltas spins))
+   	let randomGen : (rng_engine.rng -> (rng_engine.rng, i8)) = (rand_i8.rand (0i8,1i8))
+   	let bs :[](rng_engine.rng, i8) = map (\x -> randomGen x ) (rshp rngs) 
+   	let as :[](rng_engine.rng, i8) = map (\(x, _) -> randomGen x ) bs 	
+   	let getC' c (_, b:i8) (rng2: rng_engine.rng, a:i8) Delta_e = 
+		if ((f32.i8 a) > p && 
+		(Delta_e < (- Delta_e) || (f32.i8 b) < f32.exp( (- Delta_e) / t ) )) 
+			then (rng2, -1i8 * c) else (rng2, c)
+  	in unzip (reshape (w, h) (map4 getC' (rshp spins) bs as deltasF32))
+
 entry step [w][h] (abs_temp: f32) (samplerate: f32)
                   (rngs: [w][h]rng_engine.rng) (spins: [w][h]spin)
                 : ([w][h]rng_engine.rng, [w][h]spin) =
-   let p = samplerate 
-   let t = abs_temp
-   let c' (rng, b) Delta_e = if (b > p && (Delta_e < (- Delta_e) || b < exp( (- Delta_e) / t ) )) then (rng2, -c) else (rng2, c)
-   in map3 c' () (deltas spins)
-
+	step' abs_temp samplerate rngs spins
 
 import "/futlib/colour"
 
@@ -66,8 +94,9 @@ entry render [w][h] (spins: [w][h]spin): [w][h]argb.colour =
                    else argb.(bright <| light blue)
   in map1 (map1 pixel) spins
 
+--let main() = 
 -- | Just for benchmarking.
---let main (abs_temp: f32) (samplerate: f32)
---         (w: i32) (h: i32) (n: i32): [w][h]spin =
---  (loop (rngs, spins) = random_grid 1337 w h for _i < n do
---     step abs_temp samplerate rngs spins).2
+entry main (abs_temp: f32) (samplerate: f32)
+         (w: i32) (h: i32) (n: i32): [w][h]spin =
+  (loop (rngs, spins) = random_grid 1337 w h for _i < n do
+     step abs_temp samplerate rngs spins).2

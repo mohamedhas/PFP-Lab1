@@ -39,11 +39,24 @@ let process_idx (n: i32) (xs: [n]i32, ys: [n]i32) : (i32, (i32, i32)) =
 		else if ( abs(maxXS - minYS) < abs(maxYS - minXS) ) then (abs(maxYS - minXS), (imaxYS, iminXS)) else (abs(maxXS - minYS), (iminYS, imaxXS))
 
 
-let segscan [n] 't (op: t -> t -> t) (ne: t) (arr: [n](t, bool)): [n]t =
+let segscan' [n] 't (op: t -> t -> t) (ne: t) (arr: [n](t, bool)): [n](t,bool) =
 	let f (b2':bool) (t1' :t) (t2' :t) = if b2' then t2' else (op t1' t2')	
 	let op' (t1 :t, b1:bool) (t2:t, b2:bool) = (f b2 t1 t2, (b1 || b2) ) 	
-	let (vs, _) = unzip (scan op' (ne, false) arr)
+	in scan op' (ne, false) arr
+
+
+let segscan [n] 't (op: t -> t -> t) (ne: t) (arr: [n](t, bool)): [n]t =
+	let (vs, _) = unzip (segscan' op ne arr)
 	in vs
+
+let fst (x, _) = x 
+let snd (_, y) = y
+
+let segreduce [n] 't (op : t -> t -> t) (ne:t)
+	(arr : [n](t, bool)) : []t =
+		let bs = rotate 1 (snd (unzip arr))
+		let (values, _) = unzip (filter (\(_, flag) -> flag) (init (zip (segscan op ne arr) bs)))
+		in values ++ [(fst (last arr))]
 
 let estimate_pi [n] (size: f32) (xs: [n]f32) (ys: [n]f32) = 
 	let succ_hits:f32  = reduce (+) 0.0f32 (map ( \((x:f32), (y:f32)) -> if (((x - 1.0f32)*(x - 1.0f32)) + 
@@ -85,18 +98,50 @@ let sbool_gen () =
 type spin = i8
 module dist = uniform_int_distribution i8 minstd_rand
 
+module rng_engine = minstd_rand
+module rand_f32 = uniform_real_distribution f32 rng_engine
+module rand_i8 = uniform_int_distribution i8 rng_engine
 
-entry random_grid (seed: i32) (w: i32) (h: i32) : ([w][h]rng_engine.rng , [w][h]spin) =
-		let rng = minstd_rand.rng_from_seed [seed]
-		let fx = dist.rand (0i8,1i8)
-		let (rng1, x) = fx rng	
-		in unzip (reshape (h, w) (scan (\ (x, _) _ -> fx x) (rng1,x) (replicate (w * h) (rng1,x))))
+
+let random_grid (seed: i32) (w: i32) (h: i32)
+                : ([w][h]rng_engine.rng, [w][h]spin) =
+			let rng = minstd_rand.rng_from_seed [seed]
+			let randomGen : (rng_engine.rng -> (rng_engine.rng, i8)) = (rand_i8.rand (0i8,1i8))
+			let (rng1:rng_engine.rng, x:i8) = randomGen rng	
+			let (a, b) = unzip ((scan (\ (fstEltRng:rng_engine.rng, _) _ -> randomGen fstEltRng) (rng1,x) (replicate (w * h) (rng1,x))))
+			in ((reshape (h, w) a), (reshape (h, w) b) )
+
+let deltas [w][h] (spins:[w][h]spin) : [w][h]i8 =
+	let ds = (reshape (h * w, 1) (rotate@1 (-1) spins))[0]
+	let us = (reshape (h * w, 1) (rotate@1 (1) spins))[0]
+	let ls = (reshape (h * w, 1) (rotate@0 (1) spins))[0]
+	let rs = (reshape (h * w, 1) (rotate@0 (-1) spins))[0]
+	let cs = (reshape (h * w, 1) spins)[0]
+	let delta (c:i8) (d:i8) (u:i8) (l:i8) (r:i8) = 2i8 * c * ( u + d + l + r )
+	in reshape (h, w) (map5 delta cs ds us ls rs)
+
+-- (x: [][]rng_engine.rng, y: [][]spin) 
+
+let step [w][h] (abs_temp: f32) (samplerate: f32)
+                  (rngs: [w][h]rng_engine.rng) (spins: [w][h]spin)
+                : ([w][h]rng_engine.rng, [w][h]spin) =
+   let rshp 't (x: [][]t) = (reshape (h * w, 1) x)[0]
+   let p = samplerate 
+   let t = abs_temp
+   let deltasF32 = map (\x -> f32.i8 x) (rshp (deltas spins))
+   let randomGen : (rng_engine.rng -> (rng_engine.rng, i8)) = (rand_i8.rand (0i8,1i8))
+   let bs :[](rng_engine.rng, i8) = map (\x -> randomGen x ) (rshp rngs) 
+   let getC' c (rng2: rng_engine.rng, b:i8) Delta_e = if ((f32.i8 b) > p && (Delta_e < (- Delta_e) || (f32.i8 b) < f32.exp( (- Delta_e) / t ) )) then (rng2, -1i8 * c) else (rng2, c)
+   in unzip (reshape (h, w) (map3 getC' (rshp spins) (bs) deltasF32))
+		
+
 
 let main () = 
-	2i32
-
-	
-
+	--random_grid 123i32 10i32 20i32	
+	--deltas [[1i8,-1i8], [1i8,1i8]]
+	segreduce (+) 0 s3
+	--segscan (+) 0 s3
+-- 
 	
 -- Answer to 1.3
 --	
