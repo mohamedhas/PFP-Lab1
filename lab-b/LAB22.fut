@@ -8,7 +8,7 @@ module array = import "/futlib/array"
 
 let abs (x: i32) = if (0 > x) then -x else x
 
-let process (n: i32) (xs: [n]i32, ys: [n]i32) = 
+let process [n] (xs: [n]i32, ys: [n]i32) = 
 	let max (x: i32) (y: i32) = if (y > x) then y else x
 	let min (x: i32) (y: i32) = if (y > x) then x else y	
 	let maxXS = reduce max xs[0] xs
@@ -30,7 +30,7 @@ let argmin [ n ] ( xs : [ n ]i32 ) =
 	(i32.largest, -1)
 	( zip xs (iota n ) )
 
-let process_idx (n: i32) (xs: [n]i32, ys: [n]i32) : (i32, (i32, i32)) =
+let process_idx [n] (xs: [n]i32, ys: [n]i32) : (i32, (i32, i32)) =
 	let (maxXS, imaxXS) = argmax xs
 	let (maxYS, imaxYS) = argmax ys
 	let (minXS, iminXS) = argmin xs		
@@ -109,38 +109,45 @@ let random_grid (seed: i32) (w: i32) (h: i32)
 			let randomGen : (rng_engine.rng -> (rng_engine.rng, i8)) = (rand_i8.rand (0i8,1i8))
 			let (rng1:rng_engine.rng, x:i8) = randomGen rng	
 			let (a, b) = unzip ((scan (\ (fstEltRng:rng_engine.rng, _) _ -> randomGen fstEltRng) (rng1,x) (replicate (w * h) (rng1,x))))
-			in ((reshape (h, w) a), (reshape (h, w) b) )
+			in ((reshape (w, h) a), (reshape (w, h) (map (\x -> if (x == 0i8) then -1i8 else x) b)) )
 
-let deltas [w][h] (spins:[w][h]spin) : [w][h]i8 =
-	let ds = (reshape (h * w, 1) (rotate@1 (-1) spins))[0]
-	let us = (reshape (h * w, 1) (rotate@1 (1) spins))[0]
-	let ls = (reshape (h * w, 1) (rotate@0 (1) spins))[0]
-	let rs = (reshape (h * w, 1) (rotate@0 (-1) spins))[0]
-	let cs = (reshape (h * w, 1) spins)[0]
+let deltas [w][h] (spins: [w][h]spin): [w][h]i8 =
+	let ds = (reshape (1, h * w) (rotate@1 (-1) spins))[0]
+	let us = (reshape (1, h * w) (rotate@1 (1) spins))[0]
+	let ls = (reshape (1, h * w) (rotate@0 (1) spins))[0]
+	let rs = (reshape (1, h * w) (rotate@0 (-1) spins))[0]
+	let cs = (reshape (1, h * w) spins)[0]
 	let delta (c:i8) (d:i8) (u:i8) (l:i8) (r:i8) = 2i8 * c * ( u + d + l + r )
-	in reshape (h, w) (map5 delta cs ds us ls rs)
+	in reshape (w, h) (map5 delta cs ds us ls rs)
 
 -- (x: [][]rng_engine.rng, y: [][]spin) 
 
-let step [w][h] (abs_temp: f32) (samplerate: f32)
+let step' [w][h] (abs_temp: f32) (samplerate: f32)
                   (rngs: [w][h]rng_engine.rng) (spins: [w][h]spin)
                 : ([w][h]rng_engine.rng, [w][h]spin) =
-   let rshp 't (x: [][]t) = (reshape (h * w, 1) x)[0]
-   let p = samplerate 
-   let t = abs_temp
-   let deltasF32 = map (\x -> f32.i8 x) (rshp (deltas spins))
-   let randomGen : (rng_engine.rng -> (rng_engine.rng, i8)) = (rand_i8.rand (0i8,1i8))
-   let bs :[](rng_engine.rng, i8) = map (\x -> randomGen x ) (rshp rngs) 
-   let getC' c (rng2: rng_engine.rng, b:i8) Delta_e = if ((f32.i8 b) > p && (Delta_e < (- Delta_e) || (f32.i8 b) < f32.exp( (- Delta_e) / t ) )) then (rng2, -1i8 * c) else (rng2, c)
-   in unzip (reshape (h, w) (map3 getC' (rshp spins) (bs) deltasF32))
-		
+   	let rshp 't (x: [][]t) = (reshape (1, h * w) x)[0]
+   	let p = samplerate 
+   	let t = abs_temp
+   	let deltasF32 = map (\x -> f32.i8 x) (rshp (deltas spins))
+   	let randomGen : (rng_engine.rng -> (rng_engine.rng, i8)) = (rand_i8.rand (0i8,1i8))
+   	let bs :[](rng_engine.rng, i8) = map (\x -> randomGen x ) (rshp rngs) 
+   	let as :[](rng_engine.rng, i8) = map (\(x, _) -> randomGen x ) bs 	
+   	let getC' c (_, b:i8) (rng2: rng_engine.rng, a:i8) Delta_e = 
+		if ((f32.i8 a) > p && 
+		(Delta_e < (- Delta_e) || (f32.i8 b) < f32.exp( (- Delta_e) / t ) )) 
+			then (rng2, -1i8 * c) else (rng2, c)
+  	in unzip (reshape (w, h) (map4 getC' (rshp spins) bs as deltasF32))
 
 
 let main () = 
 	--random_grid 123i32 10i32 20i32	
 	--deltas [[1i8,-1i8], [1i8,1i8]]
-	segreduce (+) 0 s3
+	--segreduce (+) 0 s3
 	--segscan (+) 0 s3
+	--let ps = (random_grid 123 w h)
+	--in step' 0.2f32 0.025f32 (fst ps) (snd ps)
+	process (s1, s2)
+	
 -- 
 	
 -- Answer to 1.3

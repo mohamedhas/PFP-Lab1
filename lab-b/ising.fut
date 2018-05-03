@@ -96,7 +96,7 @@ entry render [w][h] (spins: [w][h]spin): [w][h]argb.colour =
 
 --let main() = 
 -- | Just for benchmarking.
-entry main (abs_temp: f32) (samplerate: f32)
+let main (abs_temp: f32) (samplerate: f32)
          (w: i32) (h: i32) (n: i32): [w][h]spin =
   (loop (rngs, spins) = random_grid 1337 w h for _i < n do
      step abs_temp samplerate rngs spins).2
