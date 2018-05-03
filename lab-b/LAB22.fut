@@ -149,7 +149,11 @@ let main () =
 	process (s1, s2)
 	
 -- 
-	
+
+
+
+
+
 -- Answer to 1.3
 --	
 -- (v1, f1) OP' (v2, f2) = (if f2 then v2 else v1 OP v2, f1 OR f2)
