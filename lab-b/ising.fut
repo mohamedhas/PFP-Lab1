@@ -95,7 +95,8 @@ entry render [w][h] (spins: [w][h]spin): [w][h]argb.colour =
   in map1 (map1 pixel) spins
 
 --let main() = 
--- | Just for benchmarking.
+-- == 
+-- compiled input { 0.2 0.025 100 200 1000}
 let main (abs_temp: f32) (samplerate: f32)
          (w: i32) (h: i32) (n: i32): [w][h]spin =
   (loop (rngs, spins) = random_grid 1337 w h for _i < n do

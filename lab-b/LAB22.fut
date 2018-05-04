@@ -138,15 +138,19 @@ let step' [w][h] (abs_temp: f32) (samplerate: f32)
 			then (rng2, -1i8 * c) else (rng2, c)
   	in unzip (reshape (w, h) (map4 getC' (rshp spins) bs as deltasF32))
 
+-- ==
+-- compiled input { [23,45,-23,44,23,54,23,12,34,54,7,2, 4,67] [-2, 3, 4,57,34, 2, 5,56,56, 3,3,5,77,89] } output { 112i32 } 
 
-let main () = 
+--let main [n] (x: [n]i32, y: [n]i32) = 
 	--random_grid 123i32 10i32 20i32	
 	--deltas [[1i8,-1i8], [1i8,1i8]]
 	--segreduce (+) 0 s3
 	--segscan (+) 0 s3
 	--let ps = (random_grid 123 w h)
 	--in step' 0.2f32 0.025f32 (fst ps) (snd ps)
-	process (s1, s2)
+let main [n] (x: [n]i32, y: [n]i32) = 
+	let (a, (b, c)) = process_idx (x, y)
+	in [a, b, c]
 	
 -- 
 
