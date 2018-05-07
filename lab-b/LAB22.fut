@@ -99,7 +99,7 @@ type spin = i8
 module dist = uniform_int_distribution i8 minstd_rand
 
 module rng_engine = minstd_rand
-module rand_f32 = uniform_real_distribution f32 rng_engine
+module rand_i32 = uniform_int_distribution i32 rng_engine
 module rand_i8 = uniform_int_distribution i8 rng_engine
 
 
@@ -139,7 +139,7 @@ let step' [w][h] (abs_temp: f32) (samplerate: f32)
   	in unzip (reshape (w, h) (map4 getC' (rshp spins) bs as deltasF32))
 
 -- ==
--- compiled input { [23,45,-23,44,23,54,23,12,34,54,7,2, 4,67] [-2, 3, 4,57,34, 2, 5,56,56, 3,3,5,77,89] } output { 112i32 } 
+-- compiled input {  }  
 
 --let main [n] (x: [n]i32, y: [n]i32) = 
 	--random_grid 123i32 10i32 20i32	
@@ -148,9 +148,26 @@ let step' [w][h] (abs_temp: f32) (samplerate: f32)
 	--segscan (+) 0 s3
 	--let ps = (random_grid 123 w h)
 	--in step' 0.2f32 0.025f32 (fst ps) (snd ps)
-let main [n] (x: [n]i32, y: [n]i32) = 
-	let (a, (b, c)) = process_idx (x, y)
-	in [a, b, c]
+
+let genrate_Values (n :i32) : [n]i32 = 
+	let rng = minstd_rand.rng_from_seed [1234]
+	let randomGen' : (rng_engine.rng -> (rng_engine.rng, i32)) = (rand_i32.rand (0i32,100000000i32))
+	let (rng1:rng_engine.rng, x:i32) = randomGen' rng
+	in snd (unzip ((scan (\ (fstEltRng:rng_engine.rng, _) _ -> randomGen' fstEltRng) (rng1,x) (replicate n (rng1,x)))))
+
+let generateRandomSeg (n :i32) : [n](i32, bool) = 
+	let rng = minstd_rand.rng_from_seed [1234]
+	let randomGen : (rng_engine.rng -> (rng_engine.rng, i8)) = (rand_i8.rand (0i8,64i8))
+	let (rng1:rng_engine.rng, x:i8) = randomGen rng
+	let list rng' x' = unzip ((scan (\ (fstEltRng:rng_engine.rng, _) _ -> randomGen fstEltRng) (rng',x') (replicate n (rng',x'))))
+	let boolList = map (\b -> if (b < 32i8) then false else true) (snd (list rng1 x) )
+	let valueList = genrate_Values n
+	in zip valueList boolList
+	
+
+let main (n :i32) = 
+	let arr = generateRandomSeg n
+	in snd (unzip (arr)) --segscan (+) 0 arr
 	
 -- 
 
