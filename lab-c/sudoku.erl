@@ -79,6 +79,8 @@ fill(M) ->
       || X <- Row]
      || Row <- M].
 
+
+
 %% refine entries which are lists by removing numbers they are known
 %% not to be
 
@@ -222,7 +224,10 @@ solve_one([M|Ms]) ->
 
 %% benchmarks
 
--define(EXECUTIONS,100).
+%%number of executions set to a rough third from the original,
+%%since that took 3 minutes to execute
+
+-define(EXECUTIONS,30).
 
 bm(F) ->
     {T,_} = timer:tc(?MODULE,repeat,[F]),
