@@ -7,9 +7,9 @@ type spin = i8
 import "/futlib/random"
 
 -- Pick an RNG engine and define random distributions for specific types.
-module rng_engine = minstd_rand
-module rand_f32 = uniform_real_distribution f32 rng_engine
-module rand_i8 = uniform_int_distribution i8 rng_engine
+--module rng_engine = minstd_rand
+--module rand_f32 = uniform_real_distribution f32 rng_engine
+--module rand_i8 = uniform_int_distribution i8 rng_engine
 
 -- We can create an few RNG state with 'rng_engine.rng_from_seed [x]',
 -- where 'x' is some seed.  We can split one RNG state into many with
@@ -60,19 +60,24 @@ entry deltas [w][h] (spins: [w][h]spin): [w][h]i8 =
 --   deltas spins |> flatten |> map1 i32.i8 |> reduce (+) 0
 
 -- Take one step in the Ising 2D simulation.
+let step' [w][h] (abs_temp: f32) (samplerate: f32)
+                  (rngs: [w][h]rng_engine.rng) (spins: [w][h]spin)
+                : ([w][h]rng_engine.rng, [w][h]spin) =
+   	let rshp 't (x: [][]t) = (reshape (h * w, 1) x)[0]
+   	let p = samplerate 
+   	let t = abs_temp
+   	let deltasF32 = map (\x -> f32.i8 x) (rshp (deltas spins))
+   	let randomGen : (rng_engine.rng -> (rng_engine.rng, i8)) = (rand_i8.rand (0i8,1i8))
+   	let bs :[](rng_engine.rng, i8) = map (\x -> randomGen x ) (rshp rngs) 
+   	let getC' c (rng2: rng_engine.rng, b:i8) Delta_e = if ((f32.i8 b) > p && 
+		(Delta_e < (- Delta_e) || (f32.i8 b) < f32.exp( (- Delta_e) / t ) )) 
+			then (rng2, -1i8 * c) else (rng2, c)
+  	in unzip (reshape (h, w) (map3 getC' (rshp spins) (bs) deltasF32))
+
 entry step [w][h] (abs_temp: f32) (samplerate: f32)
                   (rngs: [w][h]rng_engine.rng) (spins: [w][h]spin)
                 : ([w][h]rng_engine.rng, [w][h]spin) =
-   let rshp 't (x: [][]t) = (reshape (h * w, 1) x)[0]
-   let p = samplerate 
-   let t = abs_temp
-   let deltasF32 = map (\x -> f32.i8 x) (rshp (deltas spins))
-   let randomGen : (rng_engine.rng -> (rng_engine.rng, i8)) = (rand_i8.rand (0i8,1i8))
-   let bs :[](rng_engine.rng, i8) = map (\x -> randomGen x ) (rshp rngs) 
-   let getC' c (rng2: rng_engine.rng, b:i8) Delta_e = if ((f32.i8 b) > p && 
-		(Delta_e < (- Delta_e) || (f32.i8 b) < f32.exp( (- Delta_e) / t ) )) 
-			then (rng2, -1i8 * c) else (rng2, c)
-   in unzip (reshape (h, w) (map3 getC' (rshp spins) (bs) deltasF32))
+	step abs_temp samplerate rngs spins
 
 import "/futlib/colour"
 
@@ -84,9 +89,9 @@ entry render [w][h] (spins: [w][h]spin): [w][h]argb.colour =
                    else argb.(bright <| light blue)
   in map1 (map1 pixel) spins
 
-let main() = 
- | Just for benchmarking.
-let main (abs_temp: f32) (samplerate: f32)
+--let main() = 
+-- | Just for benchmarking.
+entry main (abs_temp: f32) (samplerate: f32)
          (w: i32) (h: i32) (n: i32): [w][h]spin =
   (loop (rngs, spins) = random_grid 1337 w h for _i < n do
      step abs_temp samplerate rngs spins).2
