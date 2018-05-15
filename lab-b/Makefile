@@ -1,7 +1,7 @@
 all: ising.py
 
 ising.py: ising.fut
-	futhark-pyopencl --library $<
+	/home/moh/.local/bin/futhark-pyopencl --library $<
 
 run: ising.py
 	python ising-gui.py
