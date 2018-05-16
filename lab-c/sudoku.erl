@@ -79,46 +79,83 @@ fill(M) ->
       || X <- Row]
      || Row <- M].
 
-
-
 %% refine entries which are lists by removing numbers they are known
 %% not to be
 
+on_exit(Pid,Fun) ->
+  spawn(fun() -> process_flag(trap_exit,true),
+    link(Pid),
+    receive
+      {'EXIT',Pid,Why} -> Fun(Why)
+    end
+        end).
+
+
+refine_(Parent,M) ->
+  spawn_link(fun() -> Parent !
+    refine_rows(
+      transpose(
+        refine_rows(
+          transpose(
+            unblocks(
+              refine_rows(
+                blocks(M)))))))end).
 
 refine(M) ->
-  spawn_link(fun() ->
-	prefine_rows(
-	  transpose(
-	    prefine_rows(
-	      transpose(
-		unblocks(
-		  prefine_rows(
-		    blocks(M)))))))end),
-    NewM = receive xs -> xs
-    if M==NewM ->
-	    M;
-       true ->
-	    refine(NewM)
-    end.
+  Parent = self(),
+  %%process_flag(trap_exit,true),
+  case catch refine_(Parent,M) of
+    {'EXIT',no_solution} ->
+      exit(no_solution);
+    Solution ->
+      Solution end,
+  NewM = receive
+           {Pid,Msg} -> exit(no_solution);
+           Xs -> Xs
+         end,
+  if M==NewM ->
+    M;
+    true ->
+      refine(NewM)
+  end.
 
+
+sum_(Pid) -> Pid ! (2 + 2).
+
+test_sum() ->
+  Parent = self(),
+  spawn_link(sudoku, sum_, [Parent]),
+  receive X -> X end.
+
+%%fun() -> Parent ! (2+2) end
 
 refine_rows(M) ->
     lists:map(fun refine_row/1,M).
-
 
 prefine_rows(M) ->
-  Ref1 = make_ref(),
-  Ref2 = make_ref(),
-  Ref3 = make_ref(),
   Parent = self(),
-  spawn_link(fun() -> Parent ! {Ref1, refine_rows(lists:sublist(M,1,3))}end),
-  spawn_link(fun() -> Parent ! {Ref2, refine_rows(lists:sublist(M,4,3))}end),
-  spawn_link(fun() -> Parent ! {Ref3, refine_rows(lists:sublist(M,7,3))}end),
-  receive {Ref1, xs} -> xs end ++
-  receive {Ref2, ys} -> ys end ++
-  receive {Ref3, zs} -> zs end.
-refine_rows(M) ->
-    lists:map(fun refine_row/1,M).
+  spawn_link(fun() -> Parent ! refine_rows(M) end),
+  receive Xs -> Xs end.
+
+%%prefine_rows(M) ->
+%%  Ref1 = make_ref(),
+%%  Ref2 = make_ref(),
+%%  Ref3 = make_ref(),
+%%  Parent = self(),
+%%  spawn_link(fun() -> Parent ! {Ref1, refine_rows(lists:sublist(M,1,3))}end),
+%%  spawn_link(fun() -> Parent ! {Ref2, refine_rows(lists:sublist(M,4,3))}end),
+%%  spawn_link(fun() -> Parent ! {Ref3, refine_rows(lists:sublist(M,7,3))}end),
+%%  X = receive {Ref1, Xs} -> Xs end,
+%%  Y = receive {Ref2, Ys} -> Ys end,
+%%  Z = receive {Ref3, Zs} -> Zs end,
+%%  X ++ Y ++ Z.
+%%XS ++ YS ++ ZS.
+
+%%  receive {Ref1, xs} -> xs ++ receive {Ref2, ys} ->
+  %%    ys ++ receive {Ref3, zs} ->
+    %%      zs end end end.
+
+
 
 refine_row(Row) ->
     Entries = entries(Row),
@@ -242,10 +279,7 @@ solve_one([M|Ms]) ->
 
 %% benchmarks
 
-%%number of executions set to a rough third from the original,
-%%since that took 3 minutes to execute
-
--define(EXECUTIONS,30).
+-define(EXECUTIONS,5).
 
 bm(F) ->
     {T,_} = timer:tc(?MODULE,repeat,[F]),
@@ -271,4 +305,5 @@ valid_row(Row) ->
 
 valid_solution(M) ->
     valid_rows(M) andalso valid_rows(transpose(M)) andalso valid_rows(blocks(M)).
+
 
