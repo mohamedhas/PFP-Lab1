@@ -87,26 +87,52 @@ on_exit(Fun) ->
       {'EXIT',Pid,Why} -> Fun(Why)
     end.
 
-refineM(Parent, M) ->
-  Parent !
+refineM(Manager, Ref, M) ->
+  Manager ! {Ref,
     refine_rows(
       transpose(
         refine_rows(
           transpose(
             unblocks(
               refine_rows(
-                blocks(M))))))).
-
+                blocks(M)))))))}.
 
 manager(Parent,M) ->
-  process_flag(trap_exit,true),
-  spawn_link(sudoku, refineM, [Parent, M]),
-  on_exit( (fun(T) -> Parent ! {xt, T} end)).
+  process_flag(trap_exit,true), %%don't let mngr die bc of wrkr?
+  Manager = self(),
+  Ref1 = make_ref(),
+  Ref2 = make_ref(),
+  Ref3 = make_ref(),
+  %spawn_link(sudoku, refineM, [Parent, M]),
+  Worker1 = spawn_link(sudoku, refineM, [Manager, Ref1, (lists:sublist(M,1,3))]),
+  Worker2 = spawn_link(sudoku, refineM, [Manager, Ref2, (lists:sublist(M,4,3))]),
+  Worker3 = spawn_link(sudoku, refineM, [Manager, Ref3, (lists:sublist(M,7,3))]),
+  case manager_recieve(Ref1, Ref2, Ref3, Parent) of
+  	{Ref1, Top} -> ?????? ;
+  	{Ref2, Mid} -> ?????? ; %%Lol this doesn't work yet, still figuring it out
+  	{Ref3, Bot} -> ??????
+  end.
+  Parent ! {Top ++ Mid ++ Bot}.
 
-handle_recive(M) ->
+  %on_exit( (fun(T) -> Parent ! {xt, T} end)).
+
+manager_recieve(Ref1, Ref2, Ref3, Parent) ->
+    receive
+      {'EXIT',Pid,Why} -> Parent ! {xt, Why};
+      {Ref, Mpartial} -> {Ref, Mpartial} end.
+
+      %{Ref2, M2} -> {Ref2, M2} end;
+      %{Ref3, M3} -> {Ref3, M3} end;
+	%Top = receive {Ref1, M1} -> M1 end,
+	%Mid = receive {Ref2, M2} -> M2 end,
+	%Bot = receive {Ref3, M3} -> M3 end,		
+	
+
+%the parent will call this to recieve message of solutions form manager
+parent_recive(M) ->
   receive
     {xt, no_solution} -> io:format("***exit: no_solution \n",[]), exit(no_solution);
-    {xt, Ms} -> io:format("***exit: ~p\n",[Ms]), handle_recive(M);
+    {xt, Ms} -> io:format("***exit: ~p\n",[Ms]), parent_recive(M);
     Xs -> if M==Xs ->
       M;
             true ->
@@ -115,15 +141,15 @@ handle_recive(M) ->
 
 refine(M) ->
   spawn_link(sudoku, manager, [self(), M]),
-  handle_recive(M).
+  parent_recive(M).
 
 
-sum_(Pid) -> Pid ! (2 + 2).
-
-test_sum() ->
-  Parent = self(),
-  spawn_link(sudoku, sum_, [Parent]),
-  receive X -> X end.
+%%sum_(Pid) -> Pid ! (2 + 2).
+%%
+%%test_sum() ->
+%%  Parent = self(),
+%%  spawn_link(sudoku, sum_, [Parent]),
+%%  receive X -> X end.
 
 %%fun() -> Parent ! (2+2) end
 
