@@ -91,33 +91,31 @@ on_exit(Pid,Fun) ->
         end).
 
 
-refine_(Parent,M) ->
-  spawn_link(fun() -> Parent !
+manager(Parent,M) ->
+  Pid =spawn(fun() -> Parent !
     refine_rows(
       transpose(
         refine_rows(
           transpose(
             unblocks(
               refine_rows(
-                blocks(M)))))))end).
+                blocks(M)))))))end),
+  on_exit(Pid, (fun(T) -> Parent ! {xt, T} end)).
+
+handle_recive(M) ->
+  receive
+    {xt, no_solution} -> io:format("***exit: no_solution \n",[]), exit(no_solution);
+    {xt, Ms} -> io:format("***exit: ~p\n",[Ms]), handle_recive(M);
+    Xs -> if M==Xs ->
+      M;
+            true ->
+              refine(Xs)
+          end end.
 
 refine(M) ->
   Parent = self(),
-  %%process_flag(trap_exit,true),
-  case catch refine_(Parent,M) of
-    {'EXIT',no_solution} ->
-      exit(no_solution);
-    Solution ->
-      Solution end,
-  NewM = receive
-           {Pid,Msg} -> exit(no_solution);
-           Xs -> Xs
-         end,
-  if M==NewM ->
-    M;
-    true ->
-      refine(NewM)
-  end.
+  manager(Parent, M),
+  handle_recive(M).
 
 
 sum_(Pid) -> Pid ! (2 + 2).
