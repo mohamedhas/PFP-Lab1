@@ -8,25 +8,18 @@
 %%     vector(M,vector(N,nat())).
 
 %% matrix transpose
-
 transpose([Row]) ->
     [[X] || X <- Row];
 transpose([Row|M]) ->
     [[X|Xs] || {X,Xs} <- lists:zip(Row,transpose(M))].
-
-%% prop_transpose() ->
-%%     ?FORALL({M,N},{nat(),nat()},
-%% 	    ?FORALL(Mat,matrix(M+1,N+1),
-%% 		    transpose(transpose(Mat)) == Mat)).
-
-%% map a matrix to a list of 3x3 blocks, each represented by the list
-%% of elements in row order
 
 triples([A,B,C|D]) ->
     [[A,B,C]|triples(D)];
 triples([]) ->
     [].
 
+%% map a matrix to a list of 3x3 blocks, each represented by the list
+%% of elements in row order
 blocks(M) ->
     Blocks = [triples(X) || X <- transpose([triples(Row) || Row <- M])],
     lists:append(
@@ -45,12 +38,6 @@ unblocks(M) ->
 	    fun(X)->lists:map(fun triples/1,X) end,
 	    triples(M))))).
 
-%% prop_blocks() ->
-%%     ?FORALL(M,matrix(9,9),
-%% 	    unblocks(blocks(M)) == M).
-
-%% decide whether a position is safe
-
 entries(Row) ->
     [X || X <- Row,
 	  1 =< X andalso X =< 9].
@@ -62,13 +49,13 @@ safe_entries(Row) ->
 safe_rows(M) ->
     lists:all(fun safe_entries/1,M).
 
+%% decide whether a position is safe
 safe(M) ->
     safe_rows(M) andalso
 	safe_rows(transpose(M)) andalso
 	safe_rows(blocks(M)).
 
 %% fill blank entries with a list of all possible values 1..9
-
 fill(M) ->
     Nine = lists:seq(1,9),
     [[if 1=<X, X=<9 ->
@@ -78,9 +65,6 @@ fill(M) ->
       end
       || X <- Row]
      || Row <- M].
-
-%% refine entries which are lists by removing numbers they are known
-%% not to be
 
 on_exit(Fun) ->
     receive
@@ -95,7 +79,6 @@ receiveM(Ref) ->
       Solution
   end.
 
-
 handle_recive(M) ->
   receive
     {xt, no_solution} -> io:format("***exit: no_solution \n",[]), exit(no_solution);
@@ -106,17 +89,6 @@ handle_recive(M) ->
               refine(Xs)
           end end.
 
-
-
-sum_(Pid) -> Pid ! (2 + 2).
-
-test_sum() ->
-  Parent = self(),
-  spawn_link(sudoku, sum_, [Parent]),
-  receive X -> X end.
-
-%%fun() -> Parent ! (2+2) end
-
 refine_rows(M) ->
   whereis(manager1) ! {self(), M},
   NewM = receiveM('ref1') ++ receiveM('ref2'),
@@ -125,27 +97,6 @@ refine_rows(M) ->
 
 prefine_rows(M) ->
   lists:map(fun refine_row/1,M).
-
-
-
-%%prefine_rows(M) ->
-%%  Ref1 = make_ref(),
-%%  Ref2 = make_ref(),
-%%  Ref3 = make_ref(),
-%%  Parent = self(),
-%%  spawn_link(fun() -> Parent ! {Ref1, refine_rows(lists:sublist(M,1,3))}end),
-%%  spawn_link(fun() -> Parent ! {Ref2, refine_rows(lists:sublist(M,4,3))}end),
-%%  spawn_link(fun() -> Parent ! {Ref3, refine_rows(lists:sublist(M,7,3))}end),
-%%  X = receive {Ref1, Xs} -> Xs end,
-%%  Y = receive {Ref2, Ys} -> Ys end,
-%%  Z = receive {Ref3, Zs} -> Zs end,
-%%  X ++ Y ++ Z.
-%%XS ++ YS ++ ZS.
-
-%%  receive {Ref1, xs} -> xs ++ receive {Ref2, ys} ->
-  %%    ys ++ receive {Ref3, zs} ->
-    %%      zs end end end.
-
 
 worker() ->
   receive {Ref, Parent, M} ->
@@ -171,7 +122,8 @@ manager() ->
   %%on_exit( (fun(T) -> Parent ! {xt, T} end)).
 
 
-
+%% refine entries which are lists by removing numbers they are known
+%% not to be
 refine(M) ->
   NewM =
     refine_rows(
@@ -212,7 +164,6 @@ refine_row(Row, Parent) ->
       Parent ! no_solution
   end.
 
-
 refine_row(Row) ->
     Entries = entries(Row),
     NewRow =
@@ -244,7 +195,6 @@ is_exit(_) ->
     false.
 
 %% is a puzzle solved?
-
 solved(M) ->
     lists:all(fun solved_row/1,M).
 
@@ -252,7 +202,6 @@ solved_row(Row) ->
     lists:all(fun(X)-> 1=<X andalso X=<9 end, Row).
 
 %% how hard is the puzzle?
-
 hard(M) ->		      
     lists:sum(
       [lists:sum(
@@ -266,7 +215,6 @@ hard(M) ->
 
 %% choose a position {I,J,Guesses} to guess an element, with the
 %% fewest possible choices
-
 guess(M) ->
     Nine = lists:seq(1,9),
     {_,I,J,X} =
@@ -278,7 +226,6 @@ guess(M) ->
 
 %% given a matrix, guess an element to form a list of possible
 %% extended matrices, easiest problem first.
-
 guesses(M) ->
     {I,J,Guesses} = guess(M),
     Ms = [catch refine(update_element(M,I,J,G)) || G <- Guesses],
@@ -296,14 +243,7 @@ update_nth(I,X,Xs) ->
     {Pre,[_|Post]} = lists:split(I-1,Xs),
     Pre++[X|Post].
 
-%% prop_update() ->
-%%     ?FORALL(L,list(int()),
-%% 	    ?IMPLIES(L/=[],
-%% 		     ?FORALL(I,choose(1,length(L)),
-%% 			     update_nth(I,lists:nth(I,L),L) == L))).
-
 %% solve a puzzle
-
 solve(M) ->
     Solution = solve_refined(refine(fill(M))),
     case valid_solution(Solution) of
@@ -339,7 +279,7 @@ initPs() ->
   register(manager1, spawn_link(sudoku, manager,[])).
 
 
-%% benchmarks
+%%%%%%% benchmarks %%%%%%%
 
 -define(EXECUTIONS,5).
 
@@ -357,9 +297,9 @@ benchmarks() ->
   initPs(),
   {ok,Puzzles} = file:consult("problems.txt"),
   timer:tc(?MODULE,benchmarks,[Puzzles]).
-		      
-%% check solutions for validity
 
+
+%% check solutions for validity
 valid_rows(M) ->
     lists:all(fun valid_row/1,M).
 
