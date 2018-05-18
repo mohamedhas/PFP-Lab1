@@ -87,21 +87,8 @@ on_exit(Fun) ->
       {'EXIT',Pid,Why} -> Fun(Why)
     end.
 
-refineM(Parent, M) ->
-  Parent !
-    refine_rows(
-      transpose(
-        refine_rows(
-          transpose(
-            unblocks(
-              refine_rows(
-                blocks(M))))))).
 
 
-manager(Parent,M) ->
-  process_flag(trap_exit,true),
-  spawn_link(sudoku, refineM, [Parent, M]),
-  on_exit( (fun(T) -> Parent ! {xt, T} end)).
 
 handle_recive(M) ->
   receive
@@ -113,9 +100,6 @@ handle_recive(M) ->
               refine(Xs)
           end end.
 
-refine(M) ->
-  spawn_link(sudoku, manager, [self(), M]),
-  handle_recive(M).
 
 
 sum_(Pid) -> Pid ! (2 + 2).
@@ -128,12 +112,9 @@ test_sum() ->
 %%fun() -> Parent ! (2+2) end
 
 refine_rows(M) ->
-    lists:map(fun refine_row/1,M).
+  lists:map(fun refine_row/1,M).
 
-prefine_rows(M) ->
-  Parent = self(),
-  spawn_link(fun() -> Parent ! refine_rows(M) end),
-  receive Xs -> Xs end.
+
 
 %%prefine_rows(M) ->
 %%  Ref1 = make_ref(),
@@ -153,6 +134,74 @@ prefine_rows(M) ->
   %%    ys ++ receive {Ref3, zs} ->
     %%      zs end end end.
 
+
+worker() ->
+  receive {Parent, M} ->
+    case catch refine_rows(
+        transpose(
+          refine_rows(
+            transpose(
+              unblocks(
+                refine_rows(
+                  blocks(M))))))) of
+        {'EXIT',no_solution} ->
+          Parent ! no_solution;
+      {'EXIT',Ms} -> io:format("***--exit: ~p\n",[Ms])
+        ;
+        Solution ->
+            Parent ! Solution
+      end
+  end,
+  worker().
+
+manager() ->
+  %%process_flag(trap_exit,true),
+  %%spawn_link(sudoku, refineM, [Parent, M]),
+  receive
+    {Parent, M} -> whereis(worker1) ! {Parent, lists:sublist(M,1,5)},
+                   whereis(worker2) ! {Parent, lists:sublist(M,6,4)}
+  end,
+  manager().
+  %%on_exit( (fun(T) -> Parent ! {xt, T} end)).
+
+receiveM() ->
+  receive
+    no_solution ->
+      exit(no_solution);
+    Solution ->
+      Solution
+  end.
+
+refine(M) ->
+  whereis(manager1) ! {self(), M},
+  receiveM() ++ receiveM() .
+
+
+
+refine_row(Row, Parent) ->
+  Entries = entries(Row),
+  NewRow =
+    [if is_list(X) ->
+      case X--Entries of
+        [] ->
+          [];
+        [Y] ->
+          Y;
+        NewX ->
+          NewX
+      end;
+       true ->
+         X
+     end
+      || X <- Row],
+  NewEntries = entries(NewRow),
+  %% check we didn't create a duplicate entry
+  case length(lists:usort(NewEntries)) == length(NewEntries) of
+    true ->
+      NewRow;
+    false ->
+      Parent ! no_solution
+  end.
 
 
 refine_row(Row) ->
@@ -268,12 +317,18 @@ solve_one([]) ->
 solve_one([M]) ->
     solve_refined(M);
 solve_one([M|Ms]) ->
-    case catch solve_refined(M) of
-	{'EXIT',no_solution} ->
-	    solve_one(Ms);
-	Solution ->
-	    Solution
-    end.
+  case catch solve_refined(M) of
+    {'EXIT',no_solution} ->
+      solve_one(Ms);
+    Solution ->
+      Solution
+  end.
+
+initPs() ->
+  register(worker1, spawn_link(sudoku, worker,[])),
+  register(worker2, spawn_link(sudoku, worker,[])),
+  register(manager1, spawn_link(sudoku, manager,[])).
+
 
 %% benchmarks
 
@@ -290,6 +345,7 @@ benchmarks(Puzzles) ->
     [{Name,bm(fun()->solve(M) end)} || {Name,M} <- Puzzles].
 
 benchmarks() ->
+  initPs(),
   {ok,Puzzles} = file:consult("problems.txt"),
   timer:tc(?MODULE,benchmarks,[Puzzles]).
 		      
