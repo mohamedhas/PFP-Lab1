@@ -82,7 +82,7 @@ on_exit(Fun) ->
 handle_recive(M) ->
   receive
     {xt, no_solution} -> io:format("***exit: no_solution \n",[]), exit(no_solution);
-    {xt, Ms} -> io:format("***exit: ~p\n",[Ms]), parent_recive(M);
+    {xt, Ms} -> io:format("***exit: ~p\n",[Ms]), handle_recive(M);
     Xs -> if M==Xs ->
       M;
             true ->
@@ -92,7 +92,7 @@ handle_recive(M) ->
 
 refine(M) ->
   spawn_link(sudoku, manager, [self(), M]),
-  parent_recive(M).
+  handle_recive(M).
 
 
 refine_rows(M) ->
