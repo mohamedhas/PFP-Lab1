@@ -1,36 +1,28 @@
-
 -module(par_sudoku).
 -author("moh").
-
 %% API
 %% -export([]).
 -compile(export_all).
 
-%% %% generators
+
+%%%%%%%% generators %%%%%%%%
 
 %% matrix(M,N) ->
 %%     vector(M,vector(N,nat())).
 
 %% matrix transpose
-
 transpose([Row]) ->
   [[X] || X <- Row];
 transpose([Row|M]) ->
   [[X|Xs] || {X,Xs} <- lists:zip(Row,transpose(M))].
-
-%% prop_transpose() ->
-%%     ?FORALL({M,N},{nat(),nat()},
-%% 	    ?FORALL(Mat,matrix(M+1,N+1),
-%% 		    transpose(transpose(Mat)) == Mat)).
-
-%% map a matrix to a list of 3x3 blocks, each represented by the list
-%% of elements in row order
 
 triples([A,B,C|D]) ->
   [[A,B,C]|triples(D)];
 triples([]) ->
   [].
 
+%% map a matrix to a list of 3x3 blocks, each represented by the list
+%% of elements in row order
 blocks(M) ->
   Blocks = [triples(X) || X <- transpose([triples(Row) || Row <- M])],
   lists:append(
@@ -49,16 +41,11 @@ unblocks(M) ->
           fun(X)->lists:map(fun triples/1,X) end,
           triples(M))))).
 
-%% prop_blocks() ->
-%%     ?FORALL(M,matrix(9,9),
-%% 	    unblocks(blocks(M)) == M).
-
-%% decide whether a position is safe
-
 entries(Row) ->
   [X || X <- Row,
     1 =< X andalso X =< 9].
 
+%% decide whether a position is safe
 safe_entries(Row) ->
   Entries = entries(Row),
   lists:sort(Entries) == lists:usort(Entries).
@@ -72,7 +59,6 @@ safe(M) ->
     safe_rows(blocks(M)).
 
 %% fill blank entries with a list of all possible values 1..9
-
 fill(M) ->
   Nine = lists:seq(1,9),
   [[if 1=<X, X=<9 ->
@@ -83,9 +69,6 @@ fill(M) ->
     || X <- Row]
     || Row <- M].
 
-%% refine entries which are lists by removing numbers they are known
-%% not to be
-
 prefine(M) ->
   case catch solve_refined(M) of
     {'EXIT',no_solution} -> io:format("***--exit: ~p\n",[no_solution]);
@@ -95,7 +78,6 @@ prefine(M) ->
     Solution ->
       master !  {solution, Solution}
   end.
-
 
 worker() ->
   receive
@@ -121,6 +103,8 @@ pool_manager([W|Ws]) ->
     request        -> master ! {wa, W}, pool_manager(Ws)
   end.
 
+%% refine entries which are lists by removing numbers they are known
+%% not to be
 refine(M) ->
   NewM =
     refine_rows(
@@ -170,7 +154,6 @@ is_exit(_) ->
   false.
 
 %% is a puzzle solved?
-
 solved(M) ->
   lists:all(fun solved_row/1,M).
 
@@ -178,7 +161,6 @@ solved_row(Row) ->
   lists:all(fun(X)-> 1=<X andalso X=<9 end, Row).
 
 %% how hard is the puzzle?
-
 hard(M) ->
   lists:sum(
     [lists:sum(
@@ -192,7 +174,6 @@ hard(M) ->
 
 %% choose a position {I,J,Guesses} to guess an element, with the
 %% fewest possible choices
-
 guess(M) ->
   Nine = lists:seq(1,9),
   {_,I,J,X} =
@@ -204,7 +185,6 @@ guess(M) ->
 
 %% given a matrix, guess an element to form a list of possible
 %% extended matrices, easiest problem first.
-
 guesses(M) ->
   {I,J,Guesses} = guess(M),
   Ms = [catch refine(update_element(M,I,J,G)) || G <- Guesses],
@@ -222,14 +202,7 @@ update_nth(I,X,Xs) ->
   {Pre,[_|Post]} = lists:split(I-1,Xs),
   Pre++[X|Post].
 
-%% prop_update() ->
-%%     ?FORALL(L,list(int()),
-%% 	    ?IMPLIES(L/=[],
-%% 		     ?FORALL(I,choose(1,length(L)),
-%% 			     update_nth(I,lists:nth(I,L),L) == L))).
-
 %% solve a puzzle
-
 solve(M) ->
   Solution = solve_refined(refine(fill(M))),
   case valid_solution(Solution) of
@@ -303,8 +276,8 @@ psolve_one([[M|Ms]]) ->
   helperFunc(M, Ms)
 .
 
-%% benchmarks
 
+%%%%%%%% benchmarks %%%%%%%%%%
 -define(EXECUTIONS,5).
 
 bm(F) ->
@@ -323,7 +296,6 @@ benchmarks() ->
   timer:tc(?MODULE,benchmarks,[Puzzles]).
 
 %% check solutions for validity
-
 valid_rows(M) ->
   lists:all(fun valid_row/1,M).
 
