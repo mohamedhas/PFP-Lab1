@@ -1,4 +1,4 @@
--module(par_sudoku).
+-module(sudoku).
 -author("moh").
 %% API
 %% -export([]).
@@ -250,9 +250,9 @@ solve_one([M|Ms]) ->
   end.
 
 initPs(Size) ->
-  Workers = [spawn_link(par_sudoku, worker,[])|| X <- lists:seq(1, Size)],
+  Workers = [spawn_link(sudoku, worker,[])|| X <- lists:seq(1, Size)],
   io:format("list of threads : ~p\n" , [Workers]),
-  register(manager, spawn_link(par_sudoku, pool_manager,[Workers])).
+  register(manager, spawn_link(sudoku, pool_manager,[Workers])).
 
 helperFunc(M, Ms) ->
   manager ! request,
