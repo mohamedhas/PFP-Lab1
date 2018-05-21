@@ -71,10 +71,10 @@ fill(M) ->
 
 prefine(M) ->
   case catch solve_refined(M) of
-    {'EXIT',no_solution} -> io:format("***--exit: ~p\n",[no_solution]);
+    {'EXIT',no_solution} -> io:format("***--exit -> ~p\n",[no_solution]);
       %%master ! no_solution;
     {'EXIT',Ms} ->
-      io:format("***--exit: ~p\n",[Ms]);
+      io:format("***-M-exit: ~p\n",[Ms]);
     Solution ->
       master !  {solution, Solution}
   end.
@@ -82,7 +82,7 @@ prefine(M) ->
 worker() ->
   receive
     exitP  -> io:format("***--exit: ~p\n",['worker']);
-    M -> io:format("print : ~p\n", M), prefine(M),
+    M -> prefine(M),
       manager ! {finish, self()},
       worker()
   end.
@@ -99,8 +99,9 @@ pool_manager([W]) ->
   end;
 pool_manager([W|Ws]) ->
   receive
-    {finish, Name} -> pool_manager([W|Name]);
-    request        -> master ! {wa, W}, pool_manager(Ws)
+    {finish, Name} -> pool_manager([Name|([W]++Ws)]); %TODO fix this
+    request        -> io:format("***WS: ~p\n",[[]]),
+                      master ! {wa, W}, pool_manager(Ws)
   end.
 
 %% refine entries which are lists by removing numbers they are known
@@ -252,18 +253,20 @@ solve_one([M|Ms]) ->
 initPs(Size) ->
   Workers = [spawn_link(sudoku, worker,[])|| X <- lists:seq(1, Size)],
   io:format("list of threads : ~p\n" , [Workers]),
-  register(manager, spawn_link(sudoku, pool_manager,[Workers])).
+  register(manager, spawn_link(sudoku, pool_manager,[Workers])),
+  register(master, self()).
 
 helperFunc(M, Ms) ->
   manager ! request,
   receive
-    naw -> case catch solve_refined(M) of
+    naw -> io:format("no av worker ! !"),
+      case catch solve_refined(M) of
              {'EXIT',no_solution} ->
                psolve_one(Ms) ;
              Solution ->
                Solution
-           end,
-      psolve(Ms);
+           end;
+      %%psolve_one(Ms);
     {solution, Solution} -> Solution;
     {wa, W}   -> W ! M, psolve_one(Ms)
   end.
@@ -271,8 +274,8 @@ helperFunc(M, Ms) ->
 psolve_one([]) ->
   exit(no_solution);
 psolve_one([M]) ->
-  helperFunc( M, []);
-psolve_one([[M|Ms]]) ->
+  solve_refined(M);
+psolve_one([M|Ms]) ->
   helperFunc(M, Ms)
 .
 
