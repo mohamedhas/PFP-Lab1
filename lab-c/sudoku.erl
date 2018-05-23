@@ -70,9 +70,11 @@ fill(M) ->
 
 
 wrefine(M) ->
-  case wsolve_refined(M) of
-    exit_solution -> io:format("***///exit -> ~p\n",[no_solution]),worker();
+  case catch wsolve_refined(M) of
+    {'EXIT',no_solution} ->
+      io:format("***///exit -> ~p\n",[no_solution]),manager ! {finish, self()}, worker();
     Solution ->
+      io:format("*** solution found -> ~p\n", [Solution]),
       master !  {solution, Solution},
       manager ! {finish, self()},
       worker()
@@ -97,7 +99,7 @@ pool_manager([W]) ->
 pool_manager([W|Ws]) ->
   receive
     {finish, Name} -> pool_manager([Name|([W]++Ws)]); %TODO fix this
-    request        -> io:format("***WS: ~p\n",[[]]),
+    request        -> io:format("***WS: ~p\n",[Ws]),
                       master ! {wa, W}, pool_manager(Ws)
   end.
 
@@ -173,8 +175,8 @@ hard(M) ->
 %% choose a position {I,J,Guesses} to guess an element, with the
 %% fewest possible choices
 guess(M) ->
-  %%io:format(" sudoku MM==++++ ~p\n", [M]),
   Nine = lists:seq(1,9),
+  %%io:format(" sudoku MM==++++ ~p\n", [M]),
   {_,I,J,X} =
     lists:min([{length(X),I,J,X}
       || {I,Row} <- lists:zip(Nine,M),
@@ -206,8 +208,14 @@ update_nth(I,X,Xs) ->
 
 %% solve a puzzle
 solve(M) ->
-
-  Solution = solve_refined(refine(fill(M))),
+  Solution = case catch solve_refined(refine(fill(M))) of
+               {'EXIT',no_solution} ->
+                  receive
+                    {solution, Solution} -> Solution
+                  end;
+               Solution ->
+                 Solution
+             end,
   case valid_solution(Solution) of
     true ->
       Solution;
@@ -219,7 +227,7 @@ solve(M) ->
 helperFunc(M, Ms) ->
   manager ! request,
   receive
-    naw -> io:format("no av worker !!\n"),
+    naw -> %%io:format("no av worker !!\n"),
       case catch solve_refined(M) of
         {'EXIT',no_solution} ->
           solve_guesses(Ms) ;
@@ -241,7 +249,7 @@ helperFunc(M, Ms) ->
 solve_guesses([]) ->
   exit(no_solution);
 solve_guesses([M]) ->
-  solve_refined([M]);
+  solve_refined(M);
 solve_guesses([M|Ms]) ->
   helperFunc(M, Ms).
 
@@ -263,8 +271,8 @@ solve_refined(M) ->
 
 
 wsolve_one([]) ->
-  exit_solution;
-  %%exit(no_solution);
+  %%exit_solution;
+  exit(no_solution);
 wsolve_one([M]) ->
   wsolve_refined(M);
 wsolve_one([M|Ms]) ->
@@ -292,7 +300,7 @@ solve_one([M|Ms]) ->
 initPs(Size) ->
   Workers = [spawn_link(sudoku, worker,[])|| X <- lists:seq(1, Size)],
   io:format("list of threads : ~p\n" , [Workers]),
-  register(manager, spawn_link(sudoku, pool_manager,[[]])),
+  register(manager, spawn_link(sudoku, pool_manager,[Workers])),
   register(master, self()).
 
 
