@@ -72,9 +72,10 @@ fill(M) ->
 wrefine(M) ->
   case catch wsolve_refined(M) of
     {'EXIT',no_solution} ->
-      io:format("***///exit -> ~p\n",[no_solution]),manager ! {finish, self()}, worker();
+      %%io:format("***///exit -> ~p\n",[no_solution]),
+      manager ! {finish, self()}, worker();
     Solution ->
-      io:format("*** solution found -> ~p\n", [Solution]),
+      %%io:format("*** solution found -> ~p\n", [Solution]),
       master !  {solution, Solution},
       manager ! {finish, self()},
       worker()
@@ -86,20 +87,26 @@ worker() ->
     M -> wrefine(M)
   end.
 
+killWorkers(Workers) ->
+  lists:map(fun(X) -> X ! exitP end, Workers).
+
 pool_manager([]) ->
   receive
+    killProcs -> io:format("***--exit Manager \n");
     {finish, Name} -> pool_manager([Name]);
     request        -> master ! naw, pool_manager([])
   end;
 pool_manager([W]) ->
   receive
+    killProcs -> killWorkers([W]);
     {finish, Name} -> pool_manager([Name|[W]]);
     request        -> master ! {wa, W}, pool_manager([])
   end;
 pool_manager([W|Ws]) ->
   receive
+    killProcs -> killWorkers([W|Ws]);
     {finish, Name} -> pool_manager([Name|([W]++Ws)]); %TODO fix this
-    request        -> io:format("***WS: ~p\n",[Ws]),
+    request        -> %%io:format("***WS: ~p\n",[Ws]),
                       master ! {wa, W}, pool_manager(Ws)
   end.
 
@@ -299,7 +306,7 @@ solve_one([M|Ms]) ->
 
 initPs(Size) ->
   Workers = [spawn_link(sudoku, worker,[])|| X <- lists:seq(1, Size)],
-  io:format("list of threads : ~p\n" , [Workers]),
+  %%io:format("list of threads : ~p\n" , [Workers]),
   register(manager, spawn_link(sudoku, pool_manager,[Workers])),
   register(master, self()).
 
