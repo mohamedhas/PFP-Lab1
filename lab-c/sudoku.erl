@@ -72,10 +72,8 @@ fill(M) ->
 wrefine(M) ->
   case catch wsolve_refined(M) of
     {'EXIT',no_solution} ->
-      %%io:format("***///exit -> ~p\n",[no_solution]),
       manager ! {finish, self()}, worker();
     Solution ->
-      %%io:format("*** solution found -> ~p\n", [Solution]),
       master !  {solution, Solution},
       manager ! {finish, self()},
       worker()
@@ -183,7 +181,6 @@ hard(M) ->
 %% fewest possible choices
 guess(M) ->
   Nine = lists:seq(1,9),
-  %%io:format(" sudoku MM==++++ ~p\n", [M]),
   {_,I,J,X} =
     lists:min([{length(X),I,J,X}
       || {I,Row} <- lists:zip(Nine,M),
@@ -234,18 +231,15 @@ solve(M) ->
 helperFunc(M, Ms) ->
   manager ! request,
   receive
-    naw -> %%io:format("no av worker !!\n"),
+    naw ->
       case catch solve_refined(M) of
         {'EXIT',no_solution} ->
           solve_guesses(Ms) ;
         {'EXIT',X} ->
-          %%io:format(" solutions MM==++++ ~p\n", [X]),
           exit(X) ;
-          %%solve_guesses(Ms) ;
         Solution ->
           Solution
       end;
-  %%psolve_one(Ms);
     {solution, Solution} -> Solution;
     {wa, W}   ->
       W ! M,
@@ -278,7 +272,6 @@ solve_refined(M) ->
 
 
 wsolve_one([]) ->
-  %%exit_solution;
   exit(no_solution);
 wsolve_one([M]) ->
   wsolve_refined(M);
@@ -306,7 +299,6 @@ solve_one([M|Ms]) ->
 
 initPs(Size) ->
   Workers = [spawn_link(sudoku, worker,[])|| X <- lists:seq(1, Size)],
-  %%io:format("list of threads : ~p\n" , [Workers]),
   register(manager, spawn_link(sudoku, pool_manager,[Workers])),
   register(master, self()).
 
