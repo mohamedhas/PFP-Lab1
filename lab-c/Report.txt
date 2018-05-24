@@ -1,4 +1,8 @@
+Miki Swahn,
+Mohamed Hassainia,
+Group 22.
 
+-------------------
 The solution relies on two worker threads that evaluate >guesses< in paralell. The
 refiement of the sudoku is still sequential, and the workers are sequential. Other than
 the workers and the main thread, there is a thread for managing the pool of availble
@@ -30,9 +34,37 @@ Paralellized:
   {extreme,50.0},
   {seventeen,115.1}]}
 
+--------------------------------------------------------------------------------------------
+Benchmarks for 100 executions.
+On a Intel core i5-5200U CPU @ 2.20GHz x 2
+
+Sequential:
+
+{49777266,
+ [{wildcat,0.36762},
+  {diabolical,39.49828},
+  {vegard_hanssen,88.87248},
+  {challenge,5.91078},
+  {challenge1,325.31135},
+  {extreme,8.07687},
+  {seventeen,29.73507}]}
+
+Paralellized:
+
+{42607837,
+ [{wildcat,0.30833999999999995},
+  {diabolical,32.56691},
+  {vegard_hanssen,69.92093},
+  {challenge,6.00536},
+  {challenge1,276.65614},
+  {extreme,9.33105},
+  {seventeen,31.28939}]}
+
+(42607837÷49777266 =0.855969812)
   ------------------
 
 On average, there is a 20% improvement (48562000/60140692=0.80747). The simpler sudokus
 benfited more from the parallelization than the more complex ones. We do bleieve that
 further improvements could have been acheived if we added depth control. One idea we 
-had was to not paralellize until there were more than two guesses. 
+had was to paralellize only at some depth level interval that is the work given to the workers
+is not too big and not too small.

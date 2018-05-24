@@ -316,7 +316,7 @@ initPs(Size) ->
 
 
 %%%%%%%% benchmarks %%%%%%%%%%
--define(EXECUTIONS,5).
+-define(EXECUTIONS,100).
 
 bm(F) ->
   {T,_} = timer:tc(?MODULE,repeat,[F]),
