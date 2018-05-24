@@ -1,0 +1,28 @@
+
+
+
+On a 2012 quad-core processor with 4 threads and 2.0 GHz. 
+
+Sequential:
+
+{60140692,
+ [{wildcat,1.0666666666666667},
+  {diabolical,163.5349},
+  {vegard_hanssen,340.6332},
+  {challenge,23.433133333333334},
+  {challenge1,1315.6230333333335},
+  {extreme,34.8664},
+  {seventeen,125.53233333333333}]}
+
+
+
+Paralellized:
+
+{48562000,
+ [{wildcat,1.5666666666666667},
+  {diabolical,98.93333333333332},
+  {vegard_hanssen,244.3},
+  {challenge,22.366666666666667},
+  {challenge1,1086.4666666666667},
+  {extreme,50.0},
+  {seventeen,115.1}]}
