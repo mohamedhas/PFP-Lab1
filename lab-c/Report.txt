@@ -5,6 +5,7 @@ the workers and the main thread, there is a thread for managing the pool of avai
 workers. 
 
 ------------------
+Benchmarks for 30 executions. 
 On a 2012 quad-core processor with 4 threads and 2.0 GHz. 
 
 Sequential:
