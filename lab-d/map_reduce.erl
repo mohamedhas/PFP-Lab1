@@ -75,3 +75,48 @@ spawn_reducer(Parent,Reduce,I,Mappeds) ->
 		 KV <- KVs],
     spawn_link(fun() -> Parent ! {self(),reduce_seq(Reduce,Inputs)} end).
 
+
+masterM() ->
+
+
+mapper() ->
+  receive
+    {MapF, Data} -> master ! MapF(Data),
+                    hadnler ! {finishM, self()}
+  end.
+
+reducer() ->
+  receive
+    {Reduce, Data} -> {Url,Body} = reduce_seq(Reduce, Data),
+      file:write_file("/tmp/" ++ Url, io_lib:fwrite("~p\n", [Body])),
+      hadnler ! {finishR, self()}
+  end.
+
+error_handler(Mappers, Reducers) ->
+  receive
+    {finishM ,Pid} -> mappers_manager ! {finish, Pid}, error_handler(Mappers#{ Pid := empty }, Reducers);
+    {finishR ,Pid} -> reducers_manager ! {finish, Pid}, error_handler(Mappers, Reducers#{ Pid := empty });
+    {handleM, F, Pid, Work} -> Pid ! {F, Work}, error_handler(Mappers#{ Pid := Work }, Reducers);
+    {handleR, F, Pid, Work} -> Pid ! {F, Work},error_handler(Mappers, Reducers#{ Pid := Work })
+  end.
+
+
+pool_manager([]) ->
+  receive
+    killProcs -> io:format("***--exit Manager \n");
+    {finish, Name} -> pool_manager([Name]);
+    request        -> master ! naw, pool_manager([])
+  end;
+pool_manager([W]) ->
+  receive
+    killProcs -> killWorkers([W]);
+    {finish, Name} -> pool_manager([Name|[W]]);
+    request        -> master ! {wa, W}, pool_manager([])
+  end;
+pool_manager([W|Ws]) ->
+  receive
+    killProcs -> killWorkers([W|Ws]);
+    {finish, Name} -> pool_manager([Name|([W]++Ws)]); %TODO fix this
+    request        -> %%io:format("***WS: ~p\n",[Ws]),
+      master ! {wa, W}, pool_manager(Ws)
+  end.
