@@ -76,7 +76,17 @@ spawn_reducer(Parent,Reduce,I,Mappeds) ->
     spawn_link(fun() -> Parent ! {self(),reduce_seq(Reduce,Inputs)} end).
 
 
-masterM() ->
+masterM(Size, Map,M,Reduce,R, [], Output) ->
+  case (Size == length(Output)) of
+    true  -> Output;
+    false -> receive
+               {reduced, Url,Body} -> masterM(Size, Map,M,Reduce,R, [], ([{Url,Body}] ++ Output))
+             end
+  end;
+masterM(Size, Map,M,Reduce,R,[Input], Output) ->
+  receive
+    {reduced, Url,Body} -> masterM(Size, Map,M,Reduce,R, [], ([{Url,Body}] ++ Output));
+  end
 
 
 mapper() ->
@@ -88,7 +98,7 @@ mapper() ->
 reducer() ->
   receive
     {Reduce, Data} -> {Url,Body} = reduce_seq(Reduce, Data),
-      file:write_file("/tmp/" ++ Url, io_lib:fwrite("~p\n", [Body])),
+      master ! {reduced, Url,Body},
       hadnler ! {finishR, self()}
   end.
 
