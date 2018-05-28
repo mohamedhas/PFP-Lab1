@@ -36,19 +36,7 @@ group(K,Vs,Rest) ->
     [{K,lists:reverse(Vs)}|group(Rest)].
 
 map_reduce_par(Map,M,Reduce,R,Input) ->
-    Parent = self(),
-    Splits = split_into(M,Input),
-    Mappers = 
-	[spawn_mapper(Parent,Map,R,Split)
-	 || Split <- Splits],
-    Mappeds = 
-	[receive {Pid,L} -> L end || Pid <- Mappers],
-    Reducers = 
-	[spawn_reducer(Parent,Reduce,I,Mappeds) 
-	 || I <- lists:seq(0,R-1)],
-    Reduceds = 
-	[receive {Pid,L} -> L end || Pid <- Reducers],
-    lists:sort(lists:flatten(Reduceds)).
+  main(Map, Reduce)
 
 spawn_mapper(Parent,Map,R,Split) ->
     spawn_link(fun() ->
@@ -76,57 +64,112 @@ spawn_reducer(Parent,Reduce,I,Mappeds) ->
     spawn_link(fun() -> Parent ! {self(),reduce_seq(Reduce,Inputs)} end).
 
 
-masterM(Size, Map,M,Reduce,R, [], Output) ->
-  case (Size == length(Output)) of
-    true  -> Output;
-    false -> receive
-               {reduced, Url,Body} -> masterM(Size, Map,M,Reduce,R, [], ([{Url,Body}] ++ Output))
-             end
-  end;
-masterM(Size, Map,M,Reduce,R,[Input], Output) ->
-  receive
-    {reduced, Url,Body} -> masterM(Size, Map,M,Reduce,R, [], ([{Url,Body}] ++ Output));
-  end
+main(Input, Map) ->
+  par_map ! {Map, Input},
+  [receive {Pid,L} -> L end || _ <- Input].
 
+initMain(Reduce) ->
+  register(par_map, spawn_link(map_reduce, parMap_, [])),
+  register(reduce_map, spawn_link(map_reduce, parReduce_, [])).
+
+parMap_() ->
+  receive
+    {Map, List} -> parMap(Map, List), parMap_()
+   end.
+
+parMap(Map, []) ->
+  nothing;
+parMap(Map, [Elt|Elts]) ->
+  mappers_manager ! request,
+  receive
+    naw -> par_reduce ! Map(Elt), parMap(Elt, Elts);
+    {wa, W} -> W ! errorHandler ! {handleM, Map, W, Elt}
+  end.
+
+parReduce_() ->
+  receive
+    {Map, List} -> parReduce(Map, List), parReduce_()
+  end.
+
+parReduce(Map, []) ->
+  nothing;
+parReduce(Map, [Elt|Elts]) ->
+  reducers_manager ! request,
+  receive
+    naw -> reduce1 ! Map(Elt), parMap(Elt, Elts);
+    {wa, W} -> W ! errorHandler ! {handleR, Map, W, Elt}
+  end.
+
+
+wait_reducer(Reduce, Data) ->
+  receive
+    na_reducer -> reduce_seq(Reduce, Data);
+    {wa, W} -> W ! {Reduce, Data};
+  end.
 
 mapper() ->
   receive
-    {MapF, Data} -> master ! MapF(Data),
-                    hadnler ! {finishM, self()}
+    {MapF, Data} -> par_reduce ! MapF(Data),
+                    handler ! {finishM, self()}
   end.
 
 reducer() ->
   receive
     {Reduce, Data} -> {Url,Body} = reduce_seq(Reduce, Data),
       master ! {reduced, Url,Body},
-      hadnler ! {finishR, self()}
+      handler ! {finishR, self()}
   end.
 
-error_handler(Mappers, Reducers) ->
+helper_function(Manager, Work, Func) ->
+    Manager ! request,
+    receive
+      naw -> helper_function(Manager);
+      {Pid, W} -> Pid ! {Func, Work}
+    end.
+
+error_handler(Mappers, Reducers, Map, Reduce) ->
   receive
     {finishM ,Pid} -> mappers_manager ! {finish, Pid}, error_handler(Mappers#{ Pid := empty }, Reducers);
     {finishR ,Pid} -> reducers_manager ! {finish, Pid}, error_handler(Mappers, Reducers#{ Pid := empty });
     {handleM, F, Pid, Work} -> Pid ! {F, Work}, error_handler(Mappers#{ Pid := Work }, Reducers);
-    {handleR, F, Pid, Work} -> Pid ! {F, Work},error_handler(Mappers, Reducers#{ Pid := Work })
+    {handleR, F, Pid, Work} -> Pid ! {F, Work},error_handler(Mappers, Reducers#{ Pid := Work });
+    {'EXIT',Pid,Reason} -> case (maps:is_key(Pid, Mappers)) of
+                             true -> helper_function(mappers_manager, maps:get(Pid, Mappers, Map));
+                             false -> case (maps:is_key(Pid, Reducers)) of
+                                        true -> helper_function(mappers_manager, maps:get(Pid, Reducers, Reduce));
+                                        false -> exit(pid_not_found)
+                                      end
+                           end
   end.
+
 
 
 pool_manager([]) ->
   receive
-    killProcs -> io:format("***--exit Manager \n");
     {finish, Name} -> pool_manager([Name]);
     request        -> master ! naw, pool_manager([])
   end;
 pool_manager([W]) ->
   receive
-    killProcs -> killWorkers([W]);
     {finish, Name} -> pool_manager([Name|[W]]);
     request        -> master ! {wa, W}, pool_manager([])
   end;
 pool_manager([W|Ws]) ->
   receive
-    killProcs -> killWorkers([W|Ws]);
     {finish, Name} -> pool_manager([Name|([W]++Ws)]); %TODO fix this
     request        -> %%io:format("***WS: ~p\n",[Ws]),
       master ! {wa, W}, pool_manager(Ws)
   end.
+
+foldR (Map, Pid) ->
+  maps:put(Pid, empty, Map).
+
+initPs(Size) ->
+  Mappers = [spawn_link(sudoku, worker,[])|| X <- lists:seq(1, Size)],
+  Reducers = [spawn_link(sudoku, worker,[])|| X <- lists:seq(1, Size)],
+  register(mappers_manager, spawn_link(sudoku, pool_manager,[Mappers])),
+  register(reducer_manager, spawn_link(sudoku, pool_manager,[Reducers])),
+  register(error_handler, self()),
+  process_flag(trap_exit,true),
+  error_handler(lists:foldr(foldR/2, maps:new(), Mappers),
+                    lists:foldr(foldR/2, maps:new(), Reducers)).

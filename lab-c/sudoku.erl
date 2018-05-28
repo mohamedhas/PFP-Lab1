@@ -316,7 +316,7 @@ bm(F) ->
 
 repeat(F) ->
   [F() || _ <- lists:seq(1,?EXECUTIONS)].
-xœ
+
 benchmarks(Puzzles) ->
   [{Name,bm(fun()->solve(M) end)} || {Name,M} <- Puzzles].
 
