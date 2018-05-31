@@ -36,7 +36,7 @@ group(K,Vs,Rest) ->
     [{K,lists:reverse(Vs)}|group(Rest)].
 
 map_reduce_par(Map,M,Reduce,R,Input) ->
-  main(Map, Reduce)
+  main(Input, Map, Reduce).
 
 spawn_mapper(Parent,Map,R,Split) ->
     spawn_link(fun() ->
@@ -64,8 +64,8 @@ spawn_reducer(Parent,Reduce,I,Mappeds) ->
     spawn_link(fun() -> Parent ! {self(),reduce_seq(Reduce,Inputs)} end).
 
 
-main(Input, Map) ->
-  par_map ! {Map, Input},
+main(Input, Map, Reduce) ->
+  par_map ! {Map, Reduce, Input},
   [receive {Pid,L} -> L end || _ <- Input].
 
 initMain(Reduce) ->
@@ -74,50 +74,46 @@ initMain(Reduce) ->
 
 parMap_() ->
   receive
-    {Map, List} -> parMap(Map, List), parMap_()
+    {Map, Reduce, List} -> parMap(Map, Reduce, List), parMap_()
    end.
 
-parMap(Map, []) ->
+parMap(Map, Reduce, []) ->
   nothing;
-parMap(Map, [Elt|Elts]) ->
+parMap(Map, Reduce, [Elt|Elts]) ->
   mappers_manager ! request,
   receive
-    naw -> par_reduce ! Map(Elt), parMap(Elt, Elts);
-    {wa, W} -> W ! errorHandler ! {handleM, Map, W, Elt}
+    naw -> par_reduce ! Map(Elt), parMap(Map, Reduce, Elts);
+    {wa, W} -> errorHandler ! {handleM, Map, Reduce, W, Elt},  parMap(Map, Reduce, Elts)
   end.
 
 parReduce_() ->
   receive
-    {Map, List} -> parReduce(Map, List), parReduce_()
+    {Reduce, List} -> parReduce(Reduce, List), parReduce_()
   end.
 
-parReduce(Map, []) ->
+parReduce(_, []) ->
   nothing;
-parReduce(Map, [Elt|Elts]) ->
+parReduce(Reduce, [Elt|Elts]) ->
   reducers_manager ! request,
   receive
-    naw -> reduce1 ! Map(Elt), parMap(Elt, Elts);
-    {wa, W} -> W ! errorHandler ! {handleR, Map, W, Elt}
+    naw -> reduce1 ! Reduce(Elt), parMap(Elt, Elts);
+    {wa, W} -> W ! errorHandler ! {handleR, Reduce, W, Elt}
   end.
 
-
-wait_reducer(Reduce, Data) ->
-  receive
-    na_reducer -> reduce_seq(Reduce, Data);
-    {wa, W} -> W ! {Reduce, Data};
-  end.
 
 mapper() ->
   receive
-    {MapF, Data} -> par_reduce ! MapF(Data),
-                    handler ! {finishM, self()}
+    {MapF, Reduce, Data} -> par_reduce ! {Reduce, MapF(Data)},
+                    handler ! {finishM, self()},
+                    mapper()
   end.
 
 reducer() ->
   receive
     {Reduce, Data} -> {Url,Body} = reduce_seq(Reduce, Data),
       master ! {reduced, Url,Body},
-      handler ! {finishR, self()}
+      handler ! {finishR, self()},
+      reducer()
   end.
 
 helper_function(Manager, Work, Func) ->
@@ -131,7 +127,7 @@ error_handler(Mappers, Reducers, Map, Reduce) ->
   receive
     {finishM ,Pid} -> mappers_manager ! {finish, Pid}, error_handler(Mappers#{ Pid := empty }, Reducers);
     {finishR ,Pid} -> reducers_manager ! {finish, Pid}, error_handler(Mappers, Reducers#{ Pid := empty });
-    {handleM, F, Pid, Work} -> Pid ! {F, Work}, error_handler(Mappers#{ Pid := Work }, Reducers);
+    {handleM, F, Pid, Reduce, Work} -> Pid ! {F, Reduce, Work}, error_handler(Mappers#{ Pid := Work }, Reducers);
     {handleR, F, Pid, Work} -> Pid ! {F, Work},error_handler(Mappers, Reducers#{ Pid := Work });
     {'EXIT',Pid,Reason} -> case (maps:is_key(Pid, Mappers)) of
                              true -> helper_function(mappers_manager, maps:get(Pid, Mappers, Map));
@@ -164,9 +160,9 @@ pool_manager([W|Ws]) ->
 foldR (Map, Pid) ->
   maps:put(Pid, empty, Map).
 
-initPs(Size) ->
-  Mappers = [spawn_link(sudoku, worker,[])|| X <- lists:seq(1, Size)],
-  Reducers = [spawn_link(sudoku, worker,[])|| X <- lists:seq(1, Size)],
+initPs(Size, Map, Reduce) ->
+  Mappers = [spawn_link(map_reduce, mapper,[])|| X <- lists:seq(1, Size)],
+  Reducers = [spawn_link(map_reduce, reducer,[])|| X <- lists:seq(1, Size)],
   register(mappers_manager, spawn_link(sudoku, pool_manager,[Mappers])),
   register(reducer_manager, spawn_link(sudoku, pool_manager,[Reducers])),
   register(error_handler, self()),
