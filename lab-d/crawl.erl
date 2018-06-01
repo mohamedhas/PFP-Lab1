@@ -74,3 +74,19 @@ find_urls(Url,Html) ->
 		       tl(lists:dropwhile(fun(Char)->Char/=$" end, R)))
 		 || R <- Relative].
 
+
+-define(EXECUTIONS,5).
+
+bm(F) ->
+  {T,_} = timer:tc(?MODULE,repeat,[F]),
+  T/?EXECUTIONS/1000.
+
+repeat(F) ->
+  [F() || _ <- lists:seq(1,?EXECUTIONS)].
+
+benchmark_(Url, Thr) ->
+    bm(fun()->crawl(Url, Thr) end).
+
+benchmarks(Url, Thr) ->
+  map_reduce:initWorker(3),
+  timer:tc(?MODULE,benchmark_,[Url, Thr]).

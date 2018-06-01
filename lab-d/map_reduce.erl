@@ -42,12 +42,13 @@ map_reduce_par(Map,M,Reduce,R,Input) ->
     [spawn_mapper(Parent,Map,R,Split)
       || Split <- Splits],
   Mappeds =
-    [receive {Pid,L} -> L end || Pid <- Mappers],
+    [receive {Pid,L} -> L end || Pid <- worker_pool(Mappers)],
   Reducers =
     [spawn_reducer(Parent,Reduce,I,Mappeds)
       || I <- lists:seq(0,R-1)],
+
   Reduceds =
-    [receive {Pid,L} -> L end || Pid <- Reducers],
+    [receive {Pid,L} -> L end || Pid <- worker_pool(Reducers)],
   lists:sort(lists:flatten(Reduceds)).
 
 spawn_mapper(Parent,Map,R,Split) ->
@@ -68,28 +69,27 @@ split_into(N,L,Len) ->
   [Pre|split_into(N-1,Suf,Len-(Len div N))].
 
 spawn_reducer(Parent,Reduce,I,Mappeds) ->
+  (fun() ->
   Inputs = [KV
     || Mapped <- Mappeds,
     {J,KVs} <- Mapped,
     I==J,
     KV <- KVs],
-  spawn_link(fun() -> Parent ! {self(),reduce_seq(Reduce,Inputs)} end).
+   Parent ! {self(),reduce_seq(Reduce,Inputs)} end).
 
 
-worker() ->
-  pool_manager ! {request, self()},
+worker(Pid) ->
+  Pid ! {request, self()},
   receive
-    {Func, Pid, Ref} -> Pid ! {Ref, Func()}, worker()
+    Func -> Func(), worker(Pid)
   end.
 
 worker_pool(Funs) ->
   [
     begin
-      Ref = make_ref(),
       receive
-        {request, Pid} -> Pid ! {Fun, self(), Ref}
-      end,
-      Ref
+        {request, Pid} -> Pid ! Fun, Pid
+      end
     end
     || Fun <- Funs ].
 
@@ -98,6 +98,8 @@ poolManager() ->
     Funcs -> worker_pool(Funcs)
   end.
 
-
+initWorker(Size) ->
+  Workers = [begin Pid = self(),spawn_link(foo@moh, fun() -> worker(Pid) end)end|| X <- lists:seq(1, Size)].
+  %%register(pool_manager, self()).
 
 
