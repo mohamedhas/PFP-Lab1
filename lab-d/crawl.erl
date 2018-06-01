@@ -88,5 +88,5 @@ benchmark_(Url, Thr) ->
     bm(fun()->crawl(Url, Thr) end).
 
 benchmarks(Url, Thr) ->
-  map_reduce:initWorker(3),
+  map_reduce:initWorker(5),
   timer:tc(?MODULE,benchmark_,[Url, Thr]).
