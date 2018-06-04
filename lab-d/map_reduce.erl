@@ -103,7 +103,7 @@ poolManager() ->
 %%    {'exit', Pid, Reason} ->
 %%  end
 
-handleRequest(Map, Func, Ref, Pid) ->
+%%handleRequest(Map, Func, Ref, Pid) ->
 
 
 pool_manager([], Map, MPid) ->
@@ -112,17 +112,13 @@ pool_manager([], Map, MPid) ->
   end;
 pool_manager([W], Map, MPid) ->
   receive
-    {finish, Name} -> pool_manager([Name|[W]]);
-    {Func, Ref}    -> W ! Func,  pool_manager([], Map#{ Pid := {Func, Ref} }, MPid);
-{request, Pid} ->
-    request        -> master ! {wa, W}, pool_manager([])
+    {Func, Pid}    -> W ! Func,  pool_manager([], Map#{ Pid := {Func, Ref} }, MPid);
+    {request, Pid} -> MPid ! {request, Pid}, pool_manager([W|Pid], Map, MPid)
   end;
-pool_manager([W|Ws]) ->
+pool_manager([W|Ws], Map, MPid) ->
   receive
-    killProcs -> killWorkers([W|Ws]);
-    {finish, Name} -> pool_manager([Name|([W]++Ws)]); %TODO fix this
-    request        -> %%io:format("***WS: ~p\n",[Ws]),
-      master ! {wa, W}, pool_manager(Ws)
+    {Func, Pid}    -> W ! Func,  pool_manager(Ws, Map#{ Pid := {Func, Ref} }, MPid);
+    {request, Pid} -> MPid ! {request, Pid}, pool_manager([W|[Pid|Ws]], Map, MPid)
   end.
 
 initWorker(Size) ->
