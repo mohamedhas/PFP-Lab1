@@ -98,6 +98,33 @@ poolManager() ->
     Funcs -> worker_pool(Funcs)
   end.
 
+%%bouncer() ->
+%%  receive
+%%    {'exit', Pid, Reason} ->
+%%  end
+
+handleRequest(Map, Func, Ref, Pid) ->
+
+
+pool_manager([], Map, MPid) ->
+  receive
+    {request, Pid} -> MPid ! {request, Pid}, pool_manager([Pid], Map#{ Pid := empty }, MPid)
+  end;
+pool_manager([W], Map, MPid) ->
+  receive
+    {finish, Name} -> pool_manager([Name|[W]]);
+    {Func, Ref}    -> W ! Func,  pool_manager([], Map#{ Pid := {Func, Ref} }, MPid);
+{request, Pid} ->
+    request        -> master ! {wa, W}, pool_manager([])
+  end;
+pool_manager([W|Ws]) ->
+  receive
+    killProcs -> killWorkers([W|Ws]);
+    {finish, Name} -> pool_manager([Name|([W]++Ws)]); %TODO fix this
+    request        -> %%io:format("***WS: ~p\n",[Ws]),
+      master ! {wa, W}, pool_manager(Ws)
+  end.
+
 initWorker(Size) ->
   Workers = [begin Pid = self(),spawn_link(foo@moh, fun() -> worker(Pid) end)end|| X <- lists:seq(1, Size)].
   %%register(pool_manager, self()).

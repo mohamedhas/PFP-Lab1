@@ -88,25 +88,7 @@ worker() ->
 killWorkers(Workers) ->
   lists:map(fun(X) -> X ! exitP end, Workers).
 
-pool_manager([]) ->
-  receive
-    killProcs -> io:format("***--exit Manager \n");
-    {finish, Name} -> pool_manager([Name]);
-    request        -> master ! naw, pool_manager([])
-  end;
-pool_manager([W]) ->
-  receive
-    killProcs -> killWorkers([W]);
-    {finish, Name} -> pool_manager([Name|[W]]);
-    request        -> master ! {wa, W}, pool_manager([])
-  end;
-pool_manager([W|Ws]) ->
-  receive
-    killProcs -> killWorkers([W|Ws]);
-    {finish, Name} -> pool_manager([Name|([W]++Ws)]); %TODO fix this
-    request        -> %%io:format("***WS: ~p\n",[Ws]),
-                      master ! {wa, W}, pool_manager(Ws)
-  end.
+de
 
 %% refine entries which are lists by removing numbers they are known
 %% not to be
