@@ -42,13 +42,13 @@ map_reduce_par(Map,M,Reduce,R,Input) ->
     [spawn_mapper(Parent,Map,R,Split)
       || Split <- Splits],
   Mappeds =
-    [receive {Pid,L} -> L end || Pid <- worker_pool(Mappers)],
+    [receive {Pi,L} -> L end || Pid <- worker_pool(Mappers)],
   Reducers =
     [spawn_reducer(Parent,Reduce,I,Mappeds)
       || I <- lists:seq(0,R-1)],
 
   Reduceds =
-    [receive {Pid,L} -> L end || Pid <- worker_pool(Reducers)],
+    [receive {Pi,L} -> L end || Pid <- worker_pool(Reducers)],
   lists:sort(lists:flatten(Reduceds)).
 
 spawn_mapper(Parent,Map,R,Split) ->
@@ -78,17 +78,17 @@ spawn_reducer(Parent,Reduce,I,Mappeds) ->
    Parent ! {self(),reduce_seq(Reduce,Inputs)} end).
 
 
-worker(Pid) ->
-  Pid ! {request, self()},
+worker() ->
+  global:whereis_name(workerSupervisor) ! {request, self()},
   receive
-    Func -> Func(), worker(Pid)
+    Func -> Func(), worker()
   end.
 
 worker_pool(Funs) ->
   [
     begin
       receive
-        {request, Pid} -> Pid ! Fun, Pid
+        {request, Pid} -> global:whereis_name(workerSupervisor) ! Fun, Pid
       end
     end
     || Fun <- Funs ].
@@ -106,23 +106,41 @@ poolManager() ->
 %%handleRequest(Map, Func, Ref, Pid) ->
 
 
-pool_manager([], Map, MPid) ->
+workers_supervisor([], Map, MPid) ->
   receive
-    {request, Pid} -> MPid ! {request, Pid}, pool_manager([Pid], Map#{ Pid := empty }, MPid)
+    {request, Pid} -> MPid ! {request, Pid}, workers_supervisor([Pid], Map#{ Pid := empty }, MPid);
+    {Func, Pi}    -> receive
+                        {request, Pid} -> Pid ! Func, workers_supervisor([], Map#{ Pid := Func }, MPid)
+                      end;
+    {'exit', EPid, Reason} -> receive
+                               {request, Pid} -> case (maps:get(EPid, Map)) of
+                                                   empty -> io:format("unexpected result: ~p\n",[Reason]);
+                                                   Func -> Pid ! Func, workers_supervisor([], Map#{ Pid := Func }, MPid)
+                                                 end
+                             end
   end;
-pool_manager([W], Map, MPid) ->
+workers_supervisor([W], Map, MPid) ->
   receive
-    {Func, Pid}    -> W ! Func,  pool_manager([], Map#{ Pid := {Func, Ref} }, MPid);
-    {request, Pid} -> MPid ! {request, Pid}, pool_manager([W|Pid], Map, MPid)
+    {request, Pid} -> MPid ! {request, Pid}, workers_supervisor([W|Pid], Map#{ Pid := empty }, MPid);
+    {Func, Pid}    -> W ! Func,  workers_supervisor([], Map#{ W := Func }, MPid);
+    {'exit', Pid, Reason} -> case (maps:get(Pid, Map)) of
+          empty -> io:format("unexpected result: ~p\n",[Reason]);
+          Func -> W ! Func, workers_supervisor([], Map#{ W := Func }, MPid)
+                             end
   end;
-pool_manager([W|Ws], Map, MPid) ->
+workers_supervisor([W|Ws], Map, MPid) ->
   receive
-    {Func, Pid}    -> W ! Func,  pool_manager(Ws, Map#{ Pid := {Func, Ref} }, MPid);
-    {request, Pid} -> MPid ! {request, Pid}, pool_manager([W|[Pid|Ws]], Map, MPid)
+    {request, Pid} -> MPid ! {request, Pid}, workers_supervisor([W|[Pid|Ws]], Map#{ Pid := empty }, MPid);
+    {Func, Pid}    -> W ! Func, workers_supervisor(Ws, Map#{ W := Func }, MPid);
+    {'exit', Pid, Reason} -> case (maps:get(Pid, Map)) of
+                                empty -> io:format("unexpected result: ~p\n",[Reason]);
+                                Func -> W ! Func, workers_supervisor(Ws, Map#{ W := Func }, MPid)
+                             end
   end.
 
 initWorker(Size) ->
-  Workers = [begin Pid = self(),spawn_link(foo@moh, fun() -> worker(Pid) end)end|| X <- lists:seq(1, Size)].
-  %%register(pool_manager, self()).
+  SupPid = spawn_link(fun() -> workers_supervisor([], maps:new(), self())end),
+  global:register_name(workerSupervisor, SupPid),
+  Workers = [begin Pid = self(),spawn_link(foo@moh, fun() -> worker() end)end|| X <- lists:seq(1, Size)].
 
 
