@@ -42,21 +42,21 @@ map_reduce_par(Map,M,Reduce,R,Input) ->
     [spawn_mapper(Parent,Map,R,Split)
       || Split <- Splits],
   Mappeds =
-    [receive {Pi,L, V} ->  L end || Pid <- worker_pool(Mappers)],
+    [receive {L, Ref} ->  L end || Ref <- worker_pool(Mappers)],
   Reducers =
     [spawn_reducer(Parent,Reduce,I,Mappeds)
       || I <- lists:seq(0,R-1)],
 
   Reduceds =
-    [receive {Pi,L, V} -> L end || Pid <- worker_pool(Reducers)],
+    [receive {L, Ref} -> L end || Ref <- worker_pool(Reducers)],
   lists:sort(lists:flatten(Reduceds)).
 
 spawn_mapper(Parent,Map,R,Split) ->
-  fun() ->
+  fun(X) ->
     Mapped = [{erlang:phash2(K2,R),{K2,V2}}
       || {K,V} <- Split,
       {K2,V2} <- Map(K,V)],
-    Parent ! {self(),group(lists:sort(Mapped)), arg}
+    Parent ! {group(lists:sort(Mapped)), X}
   end.
 
 split_into(N,L) ->
@@ -69,26 +69,27 @@ split_into(N,L,Len) ->
   [Pre|split_into(N-1,Suf,Len-(Len div N))].
 
 spawn_reducer(Parent,Reduce,I,Mappeds) ->
-  (fun() ->
+  (fun(X) ->
     Inputs = [KV
       || Mapped <- Mappeds,
       {J,KVs} <- Mapped,
       I==J,
       KV <- KVs],
-    Parent ! {self(),reduce_seq(Reduce,Inputs), arg} end).
+    Parent ! {reduce_seq(Reduce,Inputs), X} end).
 
 
 worker() ->
   global:whereis_name(workerSupervisor) ! {request, self()},
   receive
-    Func -> Func(), worker()
+    {Func, Ref} -> Func(Ref), worker()
   end.
 
 worker_pool(Funs) ->
   [
     begin
+      Ref = make_ref(),
       receive
-        {request, Pid} -> global:whereis_name(workerSupervisor) ! {Fun, Pid}, Pid
+        {request, Pid} -> global:whereis_name(workerSupervisor) ! {Fun, Ref}, Ref
       end
     end
     || Fun <- Funs ].
@@ -109,13 +110,13 @@ poolManager() ->
 workers_supervisor([], Map, MPid) ->
   receive
     {request, Pid} -> MPid ! {request, Pid}, workers_supervisor([Pid], maps:put(Pid, empty, Map), MPid);
-    {Func, Pi}    -> receive
-                       {request, Pid} -> Pid ! Func, workers_supervisor([], maps:put(Pid, Func, Map), MPid)
+    {Func, Ref}    -> receive
+                       {request, Pid} -> Pid ! {Func, Ref}, workers_supervisor([], maps:put(Pid, {Func, Ref}, Map), MPid)
                      end;
     {'exit', EPid, Reason} -> receive
                                 {request, Pid} -> case (maps:get(EPid, Map)) of
                                                     empty -> io:format("unexpected result: ~p\n",[Reason]);
-                                                    Func -> Pid ! Func, workers_supervisor([], maps:put(Pid, Func, Map), MPid)
+                                                    {Func, Ref} -> Pid ! {Func, Ref}, workers_supervisor([], maps:put(Pid, {Func, Ref}, Map), MPid)
                                                   end
                               end;
     Var -> exit(Var)
@@ -123,20 +124,20 @@ workers_supervisor([], Map, MPid) ->
 workers_supervisor([W], Map, MPid) ->
   receive
     {request, Pid} -> MPid ! {request, Pid}, workers_supervisor([W]++[Pid], maps:put(Pid, empty, Map), MPid);
-    {Func, P}    -> W ! Func, workers_supervisor([], maps:put(W, Func, Map), MPid);
+    {Func, Ref}    -> W ! {Func, Ref}, workers_supervisor([], maps:put(W, {Func, Ref}, Map), MPid);
     {'exit', Pid, Reason} -> case (maps:get(Pid, Map)) of
                                empty -> io:format("unexpected result: ~p\n",[Reason]);
-                               Func -> W ! Func, workers_supervisor([], maps:put(W, Func, Map), MPid)
+                               {Func, Ref} -> W ! {Func, Ref}, workers_supervisor([], maps:put(W, {Func, Ref}, Map), MPid)
                              end;
     Var -> exit(Var)
   end;
 workers_supervisor([W|Ws], Map, MPid) ->
   receive
     {request, Pid} -> MPid ! {request, Pid}, workers_supervisor([W|[Pid|Ws]], maps:put(Pid, empty, Map), MPid);
-    {Func, P}    -> W ! Func, workers_supervisor(Ws, maps:put(W, Func, Map), MPid);
+    {Func, Ref}    -> W ! {Func, Ref}, workers_supervisor(Ws, maps:put(W, {Func, Ref}, Map), MPid);
     {'exit', Pid, Reason} -> case (maps:get(Pid, Map)) of
                                empty -> io:format("unexpected result: ~p\n",[Reason]);
-                               Func -> W ! Func, workers_supervisor(Ws, maps:put(W, Func, Map), MPid)
+                               {Func, Ref} -> W ! {Func, Ref}, workers_supervisor(Ws, maps:put(W, {Func, Ref}, Map), MPid)
                              end;
     Var -> exit(Var)
   end.
