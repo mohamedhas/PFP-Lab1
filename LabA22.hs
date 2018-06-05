@@ -1,5 +1,4 @@
 import Data.List
-import Data.Lists
 import System.Random
 import Criterion.Main
 import Control.Parallel
@@ -7,7 +6,7 @@ import Control.Parallel.Strategies as S
 import Control.Monad.Par
 import Test.QuickCheck.Modifiers
 import Control.DeepSeq
---import Data.List.Utils
+
 
 
 -- code borrowed from the Stanford Course 240h (Functional Systems in Haskell)
@@ -15,6 +14,11 @@ import Control.DeepSeq
 
 data T a = T !a !Int
 
+
+merge [] ys = ys
+merge xs [] = xs
+merge (x:xs) (y:ys) | x <= y = x:merge xs (y:ys)
+                    | otherwise = y:merge (x:xs) ys
 
 mean :: (RealFrac a) => [a] -> a
 mean = fini . foldl' go (T 0 0)
