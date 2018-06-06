@@ -75,7 +75,7 @@ find_urls(Url,Html) ->
 		 || R <- Relative].
 
 
--define(EXECUTIONS,5).
+-define(EXECUTIONS,30).
 
 bm(F) ->
   {T,_} = timer:tc(?MODULE,repeat,[F]),

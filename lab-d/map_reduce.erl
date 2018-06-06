@@ -84,6 +84,13 @@ worker() ->
     {Func, Ref} -> Func(Ref), worker()
   end.
 
+new_worker() ->
+  io:format("new worker spawned  \n",[]),
+  receive
+    {Func, Ref} -> Func(Ref)
+  end,
+  new_worker().
+
 worker_pool(Funs) ->
   [
     begin
@@ -94,17 +101,6 @@ worker_pool(Funs) ->
     end
     || Fun <- Funs ].
 
-poolManager() ->
-  receive
-    Funcs -> worker_pool(Funcs)
-  end.
-
-%%bouncer() ->
-%%  receive
-%%    {'exit', Pid, Reason} ->
-%%  end
-
-%%handleRequest(Map, Func, Ref, Pid) ->
 
 
 workers_supervisor([], Map, MPid) ->
@@ -113,11 +109,11 @@ workers_supervisor([], Map, MPid) ->
     {Func, Ref}    -> receive
                        {request, Pid} -> Pid ! {Func, Ref}, workers_supervisor([], maps:put(Pid, {Func, Ref}, Map), MPid)
                      end;
-    {'exit', EPid, Reason} -> receive
-                                {request, Pid} -> case (maps:get(EPid, Map)) of
-                                                    empty -> io:format("unexpected result: ~p\n",[Reason]);
-                                                    {Func, Ref} -> Pid ! {Func, Ref}, workers_supervisor([], maps:put(Pid, {Func, Ref}, Map), MPid)
-                                                  end
+    {'EXIT', EPid, Reason} ->  case (maps:get(EPid, Map)) of
+                                 empty -> spawn_link(fun() -> worker() end),
+                                   workers_supervisor([], Map, MPid);
+                                 {Func, Ref} -> Pid = spawn_link(fun() -> new_worker() end), Pid ! {Func, Ref},
+                                   workers_supervisor([], maps:put(Pid, {Func, Ref}, Map), MPid)
                               end;
     Var -> exit(Var)
   end;
@@ -125,9 +121,11 @@ workers_supervisor([W], Map, MPid) ->
   receive
     {request, Pid} -> MPid ! {request, Pid}, workers_supervisor([W]++[Pid], maps:put(Pid, empty, Map), MPid);
     {Func, Ref}    -> W ! {Func, Ref}, workers_supervisor([], maps:put(W, {Func, Ref}, Map), MPid);
-    {'exit', Pid, Reason} -> case (maps:get(Pid, Map)) of
-                               empty -> io:format("unexpected result: ~p\n",[Reason]);
-                               {Func, Ref} -> W ! {Func, Ref}, workers_supervisor([], maps:put(W, {Func, Ref}, Map), MPid)
+    {'EXIT', EPid, Reason} -> case (maps:get(EPid, Map)) of
+                               empty -> spawn_link(fun() -> worker() end),
+                                 workers_supervisor(lists:filter(fun(X)-> X==EPid end,[W]), Map, MPid);
+                               {Func, Ref} -> Pid = spawn_link(fun() -> new_worker() end), Pid ! {Func, Ref},
+                                 workers_supervisor(lists:filter(fun(X)-> X==EPid end,[W]), maps:put(Pid, {Func, Ref}, Map), MPid)
                              end;
     Var -> exit(Var)
   end;
@@ -135,17 +133,27 @@ workers_supervisor([W|Ws], Map, MPid) ->
   receive
     {request, Pid} -> MPid ! {request, Pid}, workers_supervisor([W|[Pid|Ws]], maps:put(Pid, empty, Map), MPid);
     {Func, Ref}    -> W ! {Func, Ref}, workers_supervisor(Ws, maps:put(W, {Func, Ref}, Map), MPid);
-    {'exit', Pid, Reason} -> case (maps:get(Pid, Map)) of
-                               empty -> io:format("unexpected result: ~p\n",[Reason]);
-                               {Func, Ref} -> W ! {Func, Ref}, workers_supervisor(Ws, maps:put(W, {Func, Ref}, Map), MPid)
+    {'EXIT', EPid, Reason} -> case (maps:get(EPid, Map)) of
+                               empty -> spawn_link(fun() -> worker() end),
+                                 workers_supervisor(lists:filter(fun(X)-> X==EPid end,[W|Ws]), Map, MPid);
+                               {Func, Ref} -> Pid = spawn_link(fun() -> new_worker() end), Pid ! {Func, Ref},
+                                 workers_supervisor(lists:filter(fun(X)-> X==EPid end,[W|Ws]), maps:put(Pid, {Func, Ref}, Map), MPid)
                              end;
     Var -> exit(Var)
   end.
 
+%%node_superviser (Map, Num_Workers) ->
+
+
 initWorker(Size) ->
   MPid = self(),
-  SupPid = spawn_link(fun() -> workers_supervisor([], maps:new(), MPid)end),
-  global:register_name(workerSupervisor, SupPid),
-  Workers = [begin Pid = self(),spawn_link(foo@moh, fun() -> worker() end)end|| X <- lists:seq(1, Size)].
+  spawn_link(fun() ->
+    process_flag(trap_exit,true),
+  global:register_name(workerSupervisor, self()),
+  Workers = [begin Pid = self(),spawn_link(foo@moh, fun() -> worker() end)end|| X <- lists:seq(1, Size)],
+    io:format("Workers:  ~p\n",[Workers]),
+    spawn(fun() -> kill_workers(Workers) end),
+  workers_supervisor([], maps:new(), MPid)end).
 
-
+kill_workers(Ws) ->
+  [begin timer:sleep(20000), exit(Pid, procKilled) end|| Pid <- Ws].
